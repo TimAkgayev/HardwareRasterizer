@@ -1,0 +1,15 @@
+.vs/
+*.pdb
+*.idb
+*.tlog
+*.log
+*.user
+*.sdf
+*.ncb
+*.vcxproj
+*.filters
+*.db
+TODO.txt
+*.props
+*Debug/
+*Release/
