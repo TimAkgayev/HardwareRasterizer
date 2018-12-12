@@ -11,7 +11,6 @@ public:
 	}
 
 	virtual void ApplicationInitialization() {}
-	virtual void ApplicationRender() {};
 	virtual int  ApplicationUpdate() { return UPDATE_NORMAL; }
 	virtual void ApplicationShutdown() {};
 	virtual void ApplicationWindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)

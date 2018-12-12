@@ -84,6 +84,7 @@ resetEntry:
 		{
 
 			int code = ApplicationEngine.Loop();
+
 			if (code == UPDATE_RESET)
 			{
 				ApplicationEngine.Shutdown();

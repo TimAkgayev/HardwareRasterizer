@@ -11,7 +11,6 @@ public:
 	virtual ~Application() {}
 
 	virtual void ApplicationInitialization() = 0;
-	virtual void ApplicationRender() = 0;
 	virtual int  ApplicationUpdate() = 0;
 	virtual void ApplicationShutdown() = 0;
 	virtual void ApplicationWindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) = 0;
