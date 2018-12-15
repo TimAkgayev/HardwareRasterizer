@@ -1,5 +1,6 @@
 #pragma once
 #include "Application.h"
+#include "Camera.h"
 
 class ExampleApp : public Application
 {
@@ -11,7 +12,12 @@ public:
 	}
 
 	virtual void ApplicationInitialization() {}
-	virtual int  ApplicationUpdate() { return UPDATE_NORMAL; }
+	virtual int  ApplicationUpdate() 
+	{
+		
+		
+		return UPDATE_NORMAL; 
+	}
 	virtual void ApplicationShutdown() {};
 	virtual void ApplicationWindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	{
@@ -27,4 +33,9 @@ public:
 		default: break;
 		};
 	}
+
+private:
+	Camera mCamera;
+
+	
 };

@@ -4,6 +4,7 @@
 #include "D3DX\D3DX10.h"
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
+#include "Camera.h"
 
 
 #define NUM_VERTEX_ELEMENTS 2
@@ -21,8 +22,12 @@ public:
 	void Initialization(Application* AppInstance);
 	int Loop();
 	void Shutdown();
-
 	void CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInstance);
+
+
+	//called by the app
+	void SetViewMatrix(XMMATRIX& view);
+
 
 protected:
 
@@ -46,8 +51,14 @@ protected:
 	ID3D10RenderTargetView*     mD3D10RenderTargetView;
 	D3D10_VIEWPORT				mD3D10Viewport;
 
+
 	XMMATRIX mWorldMatrix;
 	XMMATRIX mViewMatrix;
 	XMMATRIX mProjectionMatrix;
+
+
+	
+
+
 }; 
 

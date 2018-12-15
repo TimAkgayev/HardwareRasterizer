@@ -23,6 +23,11 @@ void Engine::Initialization(Application* AppInstance)
 
 int Engine::Loop()
 {
+
+	// Clear the back buffer 
+	float clearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; // red,green,blue,alpha
+	mD3D10Device->ClearRenderTargetView(mD3D10RenderTargetView, clearColor);
+
 	//Game update
 	if (mApplicationInstance->ApplicationUpdate() == UPDATE_RESET)
 	{
@@ -34,7 +39,6 @@ int Engine::Loop()
 		return UPDATE_RESET;
 	}
 
-	//Render the frame
 
 	// Update our time
 	static float t = 0.0f;
@@ -46,11 +50,6 @@ int Engine::Loop()
 	t = (dwTimeCur - dwTimeStart) / 1000.0f;
 
 	mWorldMatrix = XMMatrixRotationY(t);
-	
-
-	// Clear the back buffer 
-	float clearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; // red,green,blue,alpha
-	mD3D10Device->ClearRenderTargetView(mD3D10RenderTargetView, clearColor);
 
 	// Update shader variables
 	ShaderProjectionVars shaderBuffer;
@@ -272,6 +271,11 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 
 
 
+}
+
+void Engine::SetViewMatrix(XMMATRIX & view)
+{
+	mViewMatrix = view;
 }
 
 void Engine::mCreateSampleVertexIndexBuffer()
