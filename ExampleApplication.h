@@ -1,6 +1,7 @@
 #pragma once
 #include "Application.h"
 #include "Camera.h"
+#include "Mesh.h"
 
 class ExampleApp : public Application
 {
@@ -11,7 +12,10 @@ public:
 		mWindowTitle = TEXT("Example Application");
 	}
 
-	virtual void ApplicationInitialization() {}
+	virtual void ApplicationInitialization() 
+	{
+		mCubeMesh.CreateDummyCube(10, 10);
+	}
 	virtual int  ApplicationUpdate() 
 	{
 		
@@ -36,6 +40,6 @@ public:
 
 private:
 	Camera mCamera;
-
+	Mesh mCubeMesh;
 	
 };

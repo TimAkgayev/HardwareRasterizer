@@ -51,6 +51,24 @@ int Engine::Loop()
 
 	mWorldMatrix = XMMatrixRotationY(t);
 
+
+	//load any meshes into memory
+	for (WorldObject* obj : WorldObject::ObjectList)
+	{
+		
+		//make sure that this mesh is not already loaded
+		for (MeshDescriptor& desc : mLoadedMeshes)
+			if (desc.MeshObjectPtr == obj)
+				continue;
+
+		MeshDescriptor desc;
+		desc.MeshObjectPtr = obj;
+
+		//create a vertex buffer
+
+
+	}
+
 	// Update shader variables
 	ShaderProjectionVars shaderBuffer;
 	shaderBuffer.mWorld = XMMatrixTranspose(mWorldMatrix);

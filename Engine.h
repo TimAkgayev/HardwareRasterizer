@@ -5,7 +5,7 @@
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
 #include "Camera.h"
-
+#include "WorldObject.h"
 
 #define NUM_VERTEX_ELEMENTS 2
 using namespace DirectX;
@@ -14,6 +14,14 @@ struct Vertex
 {
 	XMFLOAT3 pos;
 	XMFLOAT4 color;
+};
+
+struct MeshDescriptor
+{
+	ID3D10Buffer*    VertexBuffer;
+	ID3D10Buffer*    IndexBuffer;
+	XMMATRIX         WorldMatrix;
+	WorldObject*     MeshObjectPtr;
 };
 
 class Engine
@@ -55,6 +63,8 @@ protected:
 	XMMATRIX mWorldMatrix;
 	XMMATRIX mViewMatrix;
 	XMMATRIX mProjectionMatrix;
+
+	std::vector<MeshDescriptor> mLoadedMeshes;
 
 
 	
