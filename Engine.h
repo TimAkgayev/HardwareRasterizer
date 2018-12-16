@@ -6,11 +6,13 @@
 #include <d3dcompiler.h>
 #include "Camera.h"
 #include "WorldObject.h"
+#include "Mesh.h"
+#include "RasterizerInterface.h"
 
 #define NUM_VERTEX_ELEMENTS 2
 using namespace DirectX;
 
-struct Vertex
+struct D3DVertex
 {
 	XMFLOAT3 pos;
 	XMFLOAT4 color;
@@ -24,7 +26,7 @@ struct MeshDescriptor
 	WorldObject*     MeshObjectPtr;
 };
 
-class Engine
+class Engine : public RasterizerInterface
 {
 public:
 	void Initialization(Application* AppInstance);
@@ -33,13 +35,12 @@ public:
 	void CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInstance);
 
 
-	//called by the app
-	void SetViewMatrix(XMMATRIX& view);
-
+	//RasterizerInterface
+	void SetViewMatrix(XMMATRIX& view) override;
+	void DrawWorldObject(WorldObject* obj, XMMATRIX& worldMatrix) override;
 
 protected:
 
-	void mCreateSampleVertexIndexBuffer();
 	HRESULT CompileShaderFromFile(WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
 	
 
@@ -52,19 +53,18 @@ protected:
 	ID3D10PixelShader*  mD3D10PixelShader;
 	ID3D10InputLayout*  mD3D10InputLayout;
 	ID3D10BlendState*   mD3D10BlendState;
-	ID3D10Buffer*       mD3D10VertexBuffer;
-	ID3D10Buffer*       mD3D10IndexBuffer;
 	ID3D10Buffer*       mD3D10ConstantBuffer;
 
 	ID3D10RenderTargetView*     mD3D10RenderTargetView;
 	D3D10_VIEWPORT				mD3D10Viewport;
 
-
-	XMMATRIX mWorldMatrix;
 	XMMATRIX mViewMatrix;
 	XMMATRIX mProjectionMatrix;
 
 	std::vector<MeshDescriptor> mLoadedMeshes;
+	std::vector<UINT>  mMeshDrawList;
+
+
 
 
 	

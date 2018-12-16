@@ -3,7 +3,7 @@
 #include <DirectXMath.h>
 #include <Windows.h>
 #include "WorldObject.h"
-#include <vector>;
+#include <vector>
 using namespace DirectX;
 
 struct Vertex
@@ -18,14 +18,14 @@ public:
 	Mesh();
 	~Mesh();
 
-	void CreateDummyCube(int width, int height);
 
+
+	void CreateDummyCube(int width, int height);
 	std::vector<Vertex>& GetVertexList() ;
 	std::vector<WORD>& GetIndexList() ;
-	XMMATRIX GetWorldMatrix() const;
+	
 protected:
 	std::vector<Vertex> mVertexList;
 	std::vector<WORD> mIndexList;
-	XMMATRIX mWorldMatrix;
 
 };

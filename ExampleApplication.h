@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "Mesh.h"
 
+
 class ExampleApp : public Application
 {
 public:
@@ -12,13 +13,26 @@ public:
 		mWindowTitle = TEXT("Example Application");
 	}
 
+
 	virtual void ApplicationInitialization() 
 	{
 		mCubeMesh.CreateDummyCube(10, 10);
 	}
 	virtual int  ApplicationUpdate() 
 	{
-		
+		// Update our time
+		static float t = 0.0f;
+
+		static DWORD dwTimeStart = 0;
+		DWORD dwTimeCur = GetTickCount();
+		if (dwTimeStart == 0)
+			dwTimeStart = dwTimeCur;
+		t = (dwTimeCur - dwTimeStart) / 1000.0f;
+
+		XMMATRIX mat = XMMatrixRotationX(t);
+	
+
+		mRasterizer->DrawWorldObject((WorldObject*)&mCubeMesh, mat);
 		
 		return UPDATE_NORMAL; 
 	}
@@ -37,6 +51,8 @@ public:
 		default: break;
 		};
 	}
+
+	
 
 private:
 	Camera mCamera;

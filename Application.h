@@ -1,9 +1,11 @@
 #pragma once
 #include <Windows.h>
+#include <malloc.h>
+#include "RasterizerInterface.h"
 
 enum { UPDATE_NORMAL = 0, UPDATE_RESET };
 
-class Application
+__declspec(align(16)) class Application
 {
 public: 
 
@@ -18,12 +20,18 @@ public:
 	wchar_t* GetWindowTitle();
 	int GetClientWidth();
 	int GetClientHeight();
+
+	//making sure we're hitting those 16 bit boundaries correctly for directx math
+	void* operator new(size_t i);
+	void operator delete(void* p);
 	
-	
+	void SetRasterizer(RasterizerInterface* rasterizer);
+
 protected:
 	int mClientWidth;
 	int mClientHeight;
 	wchar_t* mWindowTitle;
+	RasterizerInterface* mRasterizer;
 	
 
 };

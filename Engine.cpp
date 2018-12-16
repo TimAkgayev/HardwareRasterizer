@@ -18,6 +18,7 @@ void Engine::Initialization(Application* AppInstance)
 {
 	mApplicationInstance = AppInstance;
 	mApplicationInstance->ApplicationInitialization();
+	mApplicationInstance->SetRasterizer((RasterizerInterface*)this);
 
 }
 
@@ -40,50 +41,88 @@ int Engine::Loop()
 	}
 
 
-	// Update our time
-	static float t = 0.0f;
-
-	static DWORD dwTimeStart = 0;
-	DWORD dwTimeCur = GetTickCount();
-	if (dwTimeStart == 0)
-		dwTimeStart = dwTimeCur;
-	t = (dwTimeCur - dwTimeStart) / 1000.0f;
-
-	mWorldMatrix = XMMatrixRotationY(t);
-
 
 	//load any meshes into memory
 	for (WorldObject* obj : WorldObject::ObjectList)
 	{
+		if (obj->ObjectType != MESH_OBJECT)
+			continue;
 		
 		//make sure that this mesh is not already loaded
 		for (MeshDescriptor& desc : mLoadedMeshes)
 			if (desc.MeshObjectPtr == obj)
 				continue;
 
-		MeshDescriptor desc;
-		desc.MeshObjectPtr = obj;
+		MeshDescriptor meshDesc;
+		meshDesc.MeshObjectPtr = obj;
+
+		Mesh* mesh = (Mesh*)obj;
 
 		//create a vertex buffer
+		D3D10_BUFFER_DESC bufferDesc;
+		bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+		bufferDesc.ByteWidth = sizeof(D3DVertex) * mesh->GetVertexList().size(); //total size of buffer in bytes
+		bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+		bufferDesc.CPUAccessFlags = 0;
+		bufferDesc.MiscFlags = 0;
 
+		D3D10_SUBRESOURCE_DATA InitData;
+		ZeroMemory(&InitData, sizeof(InitData));
+		InitData.pSysMem = &(mesh->GetVertexList()[0]);
+		if (FAILED(mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &meshDesc.VertexBuffer))) return UPDATE_NORMAL;
+
+		//create an index buffer
+		bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+		bufferDesc.ByteWidth = sizeof(WORD) * mesh->GetIndexList().size();
+		bufferDesc.BindFlags = D3D10_BIND_INDEX_BUFFER;
+		bufferDesc.CPUAccessFlags = 0;
+
+		InitData.pSysMem = &(mesh->GetIndexList()[0]);
+		mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &meshDesc.IndexBuffer);
+
+		mLoadedMeshes.push_back(meshDesc);
 
 	}
 
 	// Update shader variables
 	ShaderProjectionVars shaderBuffer;
-	shaderBuffer.mWorld = XMMatrixTranspose(mWorldMatrix);
 	shaderBuffer.mView = XMMatrixTranspose(mViewMatrix);
 	shaderBuffer.mProjection = XMMatrixTranspose(mProjectionMatrix);
-	mD3D10Device->UpdateSubresource(mD3D10ConstantBuffer, 0, NULL, &shaderBuffer, 0, 0);
 
-	// Render the mesh
-	mD3D10Device->VSSetShader(mD3D10VertexShader);
-	mD3D10Device->VSSetConstantBuffers(0, 1, &mD3D10ConstantBuffer);
-	mD3D10Device->PSSetShader(mD3D10PixelShader);
-	mD3D10Device->DrawIndexed(36, 0, 0);
+	
+
+	// Render the mesh list
+	for (UINT objIndex : mMeshDrawList)
+	{
+		shaderBuffer.mWorld = XMMatrixTranspose(mLoadedMeshes[objIndex].WorldMatrix);
+		mD3D10Device->UpdateSubresource(mD3D10ConstantBuffer, 0, NULL, &shaderBuffer, 0, 0);
+
+		mD3D10Device->VSSetShader(mD3D10VertexShader);
+		mD3D10Device->VSSetConstantBuffers(0, 1, &mD3D10ConstantBuffer);
+		mD3D10Device->PSSetShader(mD3D10PixelShader);
+
+		// Set vertex and index buffer
+		UINT stride = sizeof(D3DVertex);
+		UINT offset = 0;
+		mD3D10Device->IASetVertexBuffers(0, 1, &mLoadedMeshes[objIndex].VertexBuffer, &stride, &offset);
+		mD3D10Device->IASetIndexBuffer(mLoadedMeshes[objIndex].IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+		mD3D10Device->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+
+		//draw
+		D3D10_BUFFER_DESC tempDesc;
+		mLoadedMeshes[objIndex].IndexBuffer->GetDesc(&tempDesc);
+		UINT numIndices = tempDesc.ByteWidth / sizeof(WORD);
+
+		mD3D10Device->DrawIndexed(numIndices, 0, 0);
+	}
 
 	// Present the information rendered to the back buffer to the front buffer (the screen)
 	mD3D10SwapChain->Present(0, 0);
+
+	//empty the list
+	mMeshDrawList.clear();
 
 
 	return UPDATE_NORMAL;
@@ -219,27 +258,25 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 	if (FAILED(hr))
 		return;
 
+	//create a constant buffer for shader constant manipluation
+	D3D10_BUFFER_DESC bufferDesc;
+	bufferDesc.MiscFlags = 0;
+	bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+	bufferDesc.ByteWidth = sizeof(ShaderProjectionVars);
+	bufferDesc.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+
+	mD3D10Device->CreateBuffer(&bufferDesc, NULL, &mD3D10ConstantBuffer);
 	
 
-	// Setup the projection matrix.
-	float fieldOfView = (float)D3DX_PI / 4.0f;
-	float screenAspect = (float)mApplicationInstance->GetClientWidth() / (float)mApplicationInstance->GetClientHeight();
+	// Initialize the view matrix
+	XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
+	XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	mViewMatrix = XMMatrixLookAtLH(Eye, At, Up);
 
-	// Create the projection matrix 
-	D3DXMATRIX projectionMatrix;
-	D3DXMatrixPerspectiveFovLH(&projectionMatrix, fieldOfView, screenAspect, 0.1f, 100.0f);
-
-	// Create the world matrix
-	D3DXMATRIX worldMatrix;
-	D3DXMatrixIdentity(&worldMatrix);
-
-	// Creat the view matrix
-	D3DXMATRIX viewMatrix;
-	D3DXVECTOR3 eye(2, 3, 3);
-	D3DXVECTOR3 at(0, 0, 0);
-	D3DXVECTOR3 up(0, 1, 0);
-	D3DXMatrixLookAtLH(&viewMatrix, &eye, &at, &up);
-
+	// Initialize the projection matrix
+	mProjectionMatrix = XMMatrixPerspectiveFovLH(XM_PIDIV2, mD3D10Viewport.Width / (FLOAT)mD3D10Viewport.Height, 0.01f, 100.0f);
 
 
 	//create input layout ============================================
@@ -284,8 +321,6 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 	mD3D10Device->OMSetBlendState(mD3D10BlendState, 0, 0xffffffff);
 
 
-	//game functions
-	mCreateSampleVertexIndexBuffer();
 
 
 
@@ -296,96 +331,25 @@ void Engine::SetViewMatrix(XMMATRIX & view)
 	mViewMatrix = view;
 }
 
-void Engine::mCreateSampleVertexIndexBuffer()
+void Engine::DrawWorldObject(WorldObject * obj, XMMATRIX& worldMatrix)
 {
-
-	Vertex mesh[] = 
+	if (obj->ObjectType == MESH_OBJECT)
 	{
-		{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
-		{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-		{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
-		{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
-		{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
-		{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
-		{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
-		{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
-	};
+		UINT count = 0;
+		for (MeshDescriptor desc : mLoadedMeshes)
+		{
+			if (desc.MeshObjectPtr == obj) //find the object that was loaded
+			{
+				mLoadedMeshes[count].WorldMatrix = worldMatrix;
+				mMeshDrawList.push_back(count);
+				break;
+			}
 
-
-	D3D10_BUFFER_DESC bufferDesc;
-	bufferDesc.Usage = D3D10_USAGE_DEFAULT;
-	bufferDesc.ByteWidth = sizeof(Vertex)* 8; //total size of buffer in bytes
-	bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
-	bufferDesc.CPUAccessFlags = 0;
-	bufferDesc.MiscFlags = 0;
-
-	D3D10_SUBRESOURCE_DATA InitData;
-	ZeroMemory(&InitData, sizeof(InitData));
-	InitData.pSysMem = mesh;
-	if (FAILED(mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &mD3D10VertexBuffer))) return;
-
-
-	// Set vertex buffer
-	UINT stride = sizeof(Vertex);
-	UINT offset = 0;
-	mD3D10Device->IASetVertexBuffers(0, 1, &mD3D10VertexBuffer, &stride, &offset);
-
-
-	//create index buffer
-	WORD indices[] =
-	{
-		3,1,0,
-		2,1,3,
-
-		0,5,4,
-		1,5,0,
-
-		3,4,7,
-		0,4,3,
-
-		1,6,5,
-		2,6,1,
-
-		2,7,6,
-		3,7,2,
-
-		6,4,5,
-		7,4,6,
-	};
-
-	bufferDesc.Usage = D3D10_USAGE_DEFAULT;
-	bufferDesc.ByteWidth = sizeof(WORD) * 36;
-	bufferDesc.BindFlags = D3D10_BIND_INDEX_BUFFER;
-	bufferDesc.CPUAccessFlags = 0;
-
-	InitData.pSysMem = indices;
-	mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &mD3D10IndexBuffer);
-
-	mD3D10Device->IASetIndexBuffer(mD3D10IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-	mD3D10Device->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	//create a constant buffer for shader constant manipluation
-	bufferDesc.Usage = D3D10_USAGE_DEFAULT;
-	bufferDesc.ByteWidth = sizeof(ShaderProjectionVars);
-	bufferDesc.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
-	bufferDesc.CPUAccessFlags = 0;
-
-	mD3D10Device->CreateBuffer(&bufferDesc, NULL, &mD3D10ConstantBuffer);
-
-	//initialize matrices
-	mWorldMatrix = XMMatrixIdentity();
-
-	// Initialize the view matrix
-	XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
-	XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	mViewMatrix = XMMatrixLookAtLH(Eye, At, Up);
-
-	// Initialize the projection matrix
-	mProjectionMatrix = XMMatrixPerspectiveFovLH(XM_PIDIV2, mD3D10Viewport.Width / (FLOAT)mD3D10Viewport.Height, 0.01f, 100.0f);
-
-
+			count++;
+		}
+	}
 }
+
 
 HRESULT Engine::CompileShaderFromFile(WCHAR * szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob ** ppBlobOut)
 {

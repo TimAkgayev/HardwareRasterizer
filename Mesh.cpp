@@ -2,6 +2,7 @@
 
 Mesh::Mesh()
 {
+	ObjectType = MESH_OBJECT;
 }
 
 Mesh::~Mesh()
@@ -55,6 +56,7 @@ void Mesh::CreateDummyCube(int width, int height)
 
 }
 
+
 std::vector<Vertex>& Mesh::GetVertexList() 
 {
 	return mVertexList;
@@ -65,7 +67,3 @@ std::vector<WORD>& Mesh::GetIndexList()
 	return mIndexList;
 }
 
-XMMATRIX Mesh::GetWorldMatrix() const
-{
-	return mWorldMatrix;
-}
