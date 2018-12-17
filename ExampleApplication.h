@@ -30,8 +30,6 @@ public:
 		t = (dwTimeCur - dwTimeStart) / 1000.0f;
 
 		XMMATRIX mat = XMMatrixRotationX(t);
-	
-
 		mRasterizer->DrawWorldObject((WorldObject*)&mCubeMesh, mat);
 		
 		return UPDATE_NORMAL; 
