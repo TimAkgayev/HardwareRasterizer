@@ -13,6 +13,8 @@ public:
 		mClientWidth = 800;
 		mClientHeight = 500;
 		mWindowTitle = TEXT("Example Application");
+
+		//set the default control keys to up position
 		mKeyDownMap.insert(std::make_pair(0x57, false));
 		mKeyDownMap.insert(std::make_pair(0x53, false));
 		mKeyDownMap.insert(std::make_pair(0x41, false));
@@ -55,30 +57,14 @@ public:
 		case WM_TIMER:
 		{
 			if (wParam == W_TIMER)
-			{
-			
-		mCamera.Move(XMFLOAT3(0.0f, 0.0f, 1.0f));
-			
-			
-			}
+				mCamera.Move(XMFLOAT3(0.0f, 0.0f, 1.0f));
 			else if (wParam == S_TIMER)
-			{
-				
 				mCamera.Move(XMFLOAT3(0.0f, 0.0f, -1.0f));
-				
-			}
 			else if (wParam == D_TIMER)
-			{
-				
 				mCamera.Move(XMFLOAT3(1.0f, 0.0f, 0.0f));
-
-			}
 			else if (wParam == A_TIMER)
-			{
 				mCamera.Move(XMFLOAT3(-1.0f, 0.0f, 0.0f));	
-			}
-
-
+		
 
 		}break;
 
@@ -152,19 +138,6 @@ public:
 	
 
 private:
-
-	void _start_w_timer();
-	void _stop_w_timer();
-
-	void _start_s_timer();
-	void _stop_s_timer();
-
-	void _start_a_timer();
-	void _stop_a_timer();
-
-	void _start_d_timer();
-	void _stop_d_timer();
-
 
 	std::map<int, bool> mKeyDownMap;
 
