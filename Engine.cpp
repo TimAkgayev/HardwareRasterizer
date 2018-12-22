@@ -14,13 +14,6 @@ struct ShaderProjectionVars
 	XMMATRIX mProjection;
 };
 
-void Engine::Initialization(Application* AppInstance)
-{
-	mApplicationInstance = AppInstance;
-	mApplicationInstance->ApplicationInitialization();
-	mApplicationInstance->SetRasterizer((RasterizerInterface*)this);
-
-}
 
 int Engine::Loop()
 {
@@ -86,9 +79,28 @@ int Engine::Loop()
 
 	// Update shader variables
 	ShaderProjectionVars shaderBuffer;
-	shaderBuffer.mView = XMMatrixTranspose(mViewMatrix);
 	shaderBuffer.mProjection = XMMatrixTranspose(mProjectionMatrix);
 
+	// Update our time
+	static float t = 0.0f;
+
+	static DWORD dwTimeStart = 0;
+	DWORD dwTimeCur = GetTickCount();
+	if (dwTimeStart == 0)
+		dwTimeStart = dwTimeCur;
+	t = (dwTimeCur - dwTimeStart) / 1000.0f;
+
+	//interpolate the view matrices
+
+
+	XMMATRIX diffMatrix = mNewViewMatrix - mViewMatrix;
+	XMMATRIX partialMatrix = diffMatrix / 100.0f;
+
+
+	mViewMatrix += partialMatrix;
+		
+	
+	shaderBuffer.mView = XMMatrixTranspose(mViewMatrix);
 	
 
 	// Render the mesh list
@@ -133,12 +145,12 @@ void Engine::Shutdown()
 
 }
 
-void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInstance)
+void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInstance, Application* appInstance)
 {
 	HWND hwnd;
 	POINT windowFrameDim = { 16, 39 };
 
-
+	mApplicationInstance = appInstance;
 
 	if (!(hwnd = CreateWindowEx(NULL,
 		WindowClassName,     // class
@@ -274,6 +286,7 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 	XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	mViewMatrix = XMMatrixLookAtLH(Eye, At, Up);
+	mNewViewMatrix = mViewMatrix;
 
 	// Initialize the projection matrix
 	mProjectionMatrix = XMMatrixPerspectiveFovLH(XM_PIDIV2, mD3D10Viewport.Width / (FLOAT)mD3D10Viewport.Height, 0.01f, 100.0f);
@@ -321,14 +334,16 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 	mD3D10Device->OMSetBlendState(mD3D10BlendState, 0, 0xffffffff);
 
 
-
+	//initialize application
+	mApplicationInstance->ApplicationInitialization(mMainWindowHandle);
+	mApplicationInstance->SetRasterizer((RasterizerInterface*)this);
 
 
 }
 
-void Engine::SetViewMatrix(XMMATRIX & view)
+void Engine::SetViewMatrix(const XMMATRIX & view)
 {
-	mViewMatrix = view;
+	mNewViewMatrix = view;
 }
 
 void Engine::DrawWorldObject(WorldObject * obj, XMMATRIX& worldMatrix)

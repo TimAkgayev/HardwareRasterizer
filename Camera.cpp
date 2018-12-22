@@ -5,8 +5,10 @@
 
 Camera::Camera(void)
 {
-	mPosition = XMFLOAT3(0.0f, 0.0f, -1.0f);
-	mTarget = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	
+
+	mPosition = XMFLOAT3(0.0f, 1.0f, -5.0f);
+	mTarget = XMFLOAT3(0.0f, 1.0f, 0.0f);
 	mUp = _ConvertVectorToFloat(_ConvertFloatToVector(mPosition) + _ConvertFloatToVector(XMFLOAT3(0, 1, 0)));
 	this->initViewMatrix();
 
@@ -16,7 +18,7 @@ Camera::Camera(void)
 	mNearest = 0.0f;
 	mFarthest = 0.0f;
 
-	XMStoreFloat4x4(&mView, XMMatrixIdentity());
+	//XMStoreFloat4x4(&mView, XMMatrixIdentity());
 	XMStoreFloat4x4(&mProj, XMMatrixIdentity());
 	XMStoreFloat4x4(&mOrtho, XMMatrixIdentity());
 }
@@ -44,11 +46,29 @@ Camera& Camera::operator=(const Camera& camera)
 	return *this;
 }
 
+void Camera::CheckUserInput()
+{
+	if(GetAsyncKeyState(0x57)) //W key
+		Move(XMFLOAT3(0.0f, 0.0f, 1.0f));
+
+	if (GetAsyncKeyState(0x53)) //S key
+		Move(XMFLOAT3(0.0f, 0.0f, -1.0f));
+
+	if (GetAsyncKeyState(0x41)) //A key
+		Move(XMFLOAT3(-1.0f, 0.0f, 0.0f));
+	
+	if (GetAsyncKeyState(0x44)) //D key
+		Move(XMFLOAT3(1.0f, 0.0f, 0.0f));
+	
+}
+
 void Camera::initViewMatrix()
 {
 	XMStoreFloat4x4(&mView, XMMatrixLookAtLH(XMLoadFloat3(&mPosition), XMLoadFloat3(&mTarget),
 		XMLoadFloat3(&this->Up())));
 }
+
+
 
 void Camera::InitProjMatrix(const float angle, const float client_width, const float client_height,
 	const float near_plane, const float far_plane)
@@ -176,7 +196,7 @@ inline XMFLOAT4X4 Camera::_ConvertMatrixToFloat(XMMATRIX& matrix)
 	return val;
 }
 
-inline XMMATRIX Camera:: _ConvertFloatToMatrix(XMFLOAT4X4& val)
+XMMATRIX Camera:: _ConvertFloatToMatrix(XMFLOAT4X4& val)
 {
 	return XMLoadFloat4x4(&val);
 }

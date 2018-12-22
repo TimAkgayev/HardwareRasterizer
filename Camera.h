@@ -1,4 +1,5 @@
 #pragma once
+#include <Windows.h>
 #include <DirectXMath.h>
 using namespace DirectX;
 
@@ -12,20 +13,14 @@ using namespace DirectX;
 class Camera
 {
 public:
-	// Constructs default camera looking at 0,0,0
-	// placed at 0,0,-1 with up vector 0,1,0 (note that mUp is NOT a vector - it's vector's end)
+	// Constructs default camera looking at 0,0,0 with y up 
 	Camera(void);
-	// Create camera, based on another one
 	Camera(const Camera& camera);
-	// Copy all camera's parameters
 	Camera& operator=(const Camera& camera);
 	~Camera(void) {}
 
-private:
-	// Initialize camera's View matrix from mPosition, mTarget and mUp coordinates
-	void initViewMatrix();
+	void CheckUserInput();
 
-public:
 	// Initialize camera's perspective Projection matrix
 	void InitProjMatrix(const float angle, const float client_width, const float client_height,
 		const float nearest, const float farthest);
@@ -59,7 +54,7 @@ public:
 	// Get camera's look at target vector
 	const XMFLOAT3 LookAtTarget() { return _ConvertVectorToFloat(_ConvertFloatToVector(mTarget) - _ConvertFloatToVector(mPosition)); }
 	// Returns transposed camera's View matrix	
-	const XMFLOAT4X4 View() { return _ConvertMatrixToFloat(XMMatrixTranspose(_ConvertFloatToMatrix(mView))); }
+	const XMMATRIX View() { return _ConvertFloatToMatrix(mView); }
 
 	/////////////////////////////////////////////////////
 	/*** Projection matrix transformation interfaces ***/
@@ -81,6 +76,10 @@ public:
 	const XMFLOAT4X4 Ortho() { return _ConvertMatrixToFloat(XMMatrixTranspose(_ConvertFloatToMatrix(mOrtho))); }
 
 private:
+
+	void initViewMatrix();
+
+
 	/*** Camera parameters ***/
 	XMFLOAT3 mPosition;		// Camera's coordinates
 	XMFLOAT3 mTarget;		// View target's coordinates

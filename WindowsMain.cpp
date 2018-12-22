@@ -60,9 +60,7 @@ int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpCmdLine
 //entry point when resetting
 resetEntry:
 
-	ApplicationEngine.Initialization(RunningApplication);
-
-	ApplicationEngine.CreateEngineWindow(TEXT(APPLICATION_WINDOW_CLASS_NAME), hinstance);
+	ApplicationEngine.CreateEngineWindow(TEXT(APPLICATION_WINDOW_CLASS_NAME), hinstance, RunningApplication);
 
 
 

@@ -29,14 +29,13 @@ struct MeshDescriptor
 class Engine : public RasterizerInterface
 {
 public:
-	void Initialization(Application* AppInstance);
 	int Loop();
 	void Shutdown();
-	void CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInstance);
+	void CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInstance, Application* appInstance);
 
 
 	//RasterizerInterface
-	void SetViewMatrix(XMMATRIX& view) override;
+	void SetViewMatrix(const XMMATRIX& view) override;
 	void DrawWorldObject(WorldObject* obj, XMMATRIX& worldMatrix) override;
 
 protected:
@@ -59,6 +58,7 @@ protected:
 	D3D10_VIEWPORT				mD3D10Viewport;
 
 	XMMATRIX mViewMatrix;
+	XMMATRIX mNewViewMatrix;
 	XMMATRIX mProjectionMatrix;
 
 	std::vector<MeshDescriptor> mLoadedMeshes;
