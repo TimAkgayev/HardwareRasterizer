@@ -25,7 +25,7 @@ public:
 	virtual void ApplicationInitialization(HWND window) 
 	{
 		mWindow = window;
-		mCubeMesh.CreateDummyCube(10, 10);
+		mCubeMesh.CreateDummyCube(10, 20);
 	}
 	virtual int  ApplicationUpdate() 
 	{
@@ -56,14 +56,17 @@ public:
 
 		case WM_TIMER:
 		{
+
+			float moveSpeed = 5.0f;
+
 			if (wParam == W_TIMER)
-				mCamera.Move(XMFLOAT3(0.0f, 0.0f, 1.0f));
+				mCamera.Move(XMFLOAT3(0.0f, 0.0f, moveSpeed));
 			else if (wParam == S_TIMER)
-				mCamera.Move(XMFLOAT3(0.0f, 0.0f, -1.0f));
+				mCamera.Move(XMFLOAT3(0.0f, 0.0f, -moveSpeed));
 			else if (wParam == D_TIMER)
-				mCamera.Move(XMFLOAT3(1.0f, 0.0f, 0.0f));
+				mCamera.Move(XMFLOAT3(moveSpeed, 0.0f, 0.0f));
 			else if (wParam == A_TIMER)
-				mCamera.Move(XMFLOAT3(-1.0f, 0.0f, 0.0f));	
+				mCamera.Move(XMFLOAT3(-moveSpeed, 0.0f, 0.0f));
 		
 
 		}break;
