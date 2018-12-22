@@ -42,9 +42,16 @@ int Engine::Loop()
 			continue;
 		
 		//make sure that this mesh is not already loaded
+		bool meshExists = false;
 		for (MeshDescriptor& desc : mLoadedMeshes)
 			if (desc.MeshObjectPtr == obj)
-				continue;
+			{
+				meshExists = true;
+				break;
+			}
+
+		if (meshExists)
+			continue;
 
 		MeshDescriptor meshDesc;
 		meshDesc.MeshObjectPtr = obj;
