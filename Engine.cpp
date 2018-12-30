@@ -3,7 +3,7 @@
 D3D10_INPUT_ELEMENT_DESC DX10VertexLayout[] =
 {
 	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-	{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 }
+	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 }
 	
 };
 
@@ -109,6 +109,8 @@ int Engine::Loop()
 	
 	shaderBuffer.mView = XMMatrixTranspose(mViewMatrix);
 	
+	mD3D10Device->PSSetSamplers(0, 1, &mD3D10SamplerState);
+	mD3D10Device->PSSetShaderResources(0, 1, &mD3D10TextureResourceView);
 
 	// Render the mesh list
 	for (UINT objIndex : mMeshDrawList)
@@ -215,9 +217,10 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 		return;
 	}
 
+	//Create texture views
+	D3DX10CreateShaderResourceViewFromFile(mD3D10Device, L"..\\HardwareRasterizer\\Textures\\Test.bmp", NULL, NULL, &mD3D10TextureResourceView, NULL);
 
 	// create render target for merger state ===================================================
-
 	ID3D10Texture2D* pBackBuffer;
 	if (FAILED(mD3D10SwapChain->GetBuffer(0, __uuidof(ID3D10Texture2D), (LPVOID*)&pBackBuffer))) return;
 
@@ -299,10 +302,23 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 	mProjectionMatrix = XMMatrixPerspectiveFovLH(XM_PIDIV2, mD3D10Viewport.Width / (FLOAT)mD3D10Viewport.Height, 0.01f, 1000.0f);
 
 
-	//create input layout ============================================
-
+	// Create input layout ============================================
 	if (FAILED(mD3D10Device->CreateInputLayout(DX10VertexLayout, NUM_VERTEX_ELEMENTS, pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), &mD3D10InputLayout))) return;
 	mD3D10Device->IASetInputLayout(mD3D10InputLayout);
+
+
+	// Create the sample state
+	D3D10_SAMPLER_DESC sampDesc;
+	ZeroMemory(&sampDesc, sizeof(sampDesc));
+	sampDesc.Filter = D3D10_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D10_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV = D3D10_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D10_TEXTURE_ADDRESS_WRAP;
+	sampDesc.ComparisonFunc = D3D10_COMPARISON_NEVER;
+	sampDesc.MinLOD = 0;
+	sampDesc.MaxLOD = D3D10_FLOAT32_MAX;
+	mD3D10Device->CreateSamplerState(&sampDesc, &mD3D10SamplerState);
+
 
 
 	//set up rasterizer flags ============================================

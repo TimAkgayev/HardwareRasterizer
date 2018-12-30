@@ -13,14 +13,14 @@ void Mesh::CreateDummyCube(int width, int height)
 {
 	Vertex mesh[] =
 	{
-		{ XMFLOAT3(-width/2.0f, height/2.0f, -width/2.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
-		{ XMFLOAT3(width/2.0f, height/2.0f, -width/2.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-		{ XMFLOAT3(width/2.0f, height/2.0f, width/2.0f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
-		{ XMFLOAT3(-width/2.0f, height/2.0f, width/2.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
-		{ XMFLOAT3(-width/2.0f, -height/2.0f, -width/2.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
-		{ XMFLOAT3(width/2.0f, -height/2.0f, -width/2.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
-		{ XMFLOAT3(width/2.0f, -height/2.0f, width/2.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
-		{ XMFLOAT3(-width/2.0f, -height/2.0f, width/2.0f), XMFLOAT4(0.5f, 0.0f, 0.3f, 1.0f) },
+		{ XMFLOAT3(-width/2.0f, height/2.0f, -width/2.0f), XMFLOAT2(0.0f, 0.0f) },
+		{ XMFLOAT3(width/2.0f, height/2.0f, -width/2.0f), XMFLOAT2(0.0f, 1.0f) },
+		{ XMFLOAT3(width/2.0f, height/2.0f, width/2.0f), XMFLOAT2(0.0f, 1.0f) },
+		{ XMFLOAT3(-width/2.0f, height/2.0f, width/2.0f), XMFLOAT2(1.0f, 0.0f) },
+		{ XMFLOAT3(-width/2.0f, -height/2.0f, -width/2.0f), XMFLOAT2(1.0f, 0.0f) },
+		{ XMFLOAT3(width/2.0f, -height/2.0f, -width/2.0f), XMFLOAT2(1.0f, 1.0f) },
+		{ XMFLOAT3(width/2.0f, -height/2.0f, width/2.0f), XMFLOAT2(1.0f, 1.0f) },
+		{ XMFLOAT3(-width/2.0f, -height/2.0f, width/2.0f), XMFLOAT2(0.5f, 0.0f) },
 	};
 
 	for (Vertex v : mesh)
@@ -74,7 +74,7 @@ void Mesh::CreateFloor(std::string pathToHeightmap, int length, int width)
 			float height = heightMap.GetData()[xdim + zdim*dim.x];
 		
 			float color = (height)/ 255.0f;
-			floorMesh[xdim + zdim*dim.x] = { XMFLOAT3((float)xdim, 1.0f , (float)zdim), XMFLOAT4(0.0f, color, color, 1.0f) };
+			floorMesh[xdim + zdim*dim.x] = { XMFLOAT3((float)xdim, height , (float)zdim), XMFLOAT2(float(xdim)/dim.x, float(zdim)/dim.y) };
 		} 
 	}
 

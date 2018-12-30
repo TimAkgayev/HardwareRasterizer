@@ -15,7 +15,7 @@ using namespace DirectX;
 struct D3DVertex
 {
 	XMFLOAT3 pos;
-	XMFLOAT4 color;
+	XMFLOAT2 uv;
 };
 
 struct MeshDescriptor
@@ -46,13 +46,15 @@ protected:
 	Application* mApplicationInstance;
 	HWND mMainWindowHandle;
 
-	ID3D10Device*		mD3D10Device;
-	IDXGISwapChain*		mD3D10SwapChain;
-	ID3D10VertexShader* mD3D10VertexShader;
-	ID3D10PixelShader*  mD3D10PixelShader;
-	ID3D10InputLayout*  mD3D10InputLayout;
-	ID3D10BlendState*   mD3D10BlendState;
-	ID3D10Buffer*       mD3D10ConstantBuffer;
+	ID3D10Device*		 mD3D10Device;
+	IDXGISwapChain*		 mD3D10SwapChain;
+	ID3D10VertexShader*  mD3D10VertexShader;
+	ID3D10PixelShader*   mD3D10PixelShader;
+	ID3D10InputLayout*   mD3D10InputLayout;
+	ID3D10BlendState*    mD3D10BlendState;
+	ID3D10Buffer*        mD3D10ConstantBuffer;
+	ID3D10SamplerState*  mD3D10SamplerState;
+	ID3D10ShaderResourceView* mD3D10TextureResourceView;
 
 	ID3D10RenderTargetView*     mD3D10RenderTargetView;
 	D3D10_VIEWPORT				mD3D10Viewport;
