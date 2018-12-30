@@ -7,7 +7,7 @@ Camera::Camera(void)
 {
 	
 
-	mPosition = XMFLOAT3(0.0f, 1.0f, -5.0f);
+	mPosition = XMFLOAT3(0.0f, -1.0f, -5.0f);
 	mTarget = XMFLOAT3(0.0f, 1.0f, 0.0f);
 	mUp = _ConvertVectorToFloat(_ConvertFloatToVector(mPosition) + _ConvertFloatToVector(XMFLOAT3(0, 1, 0)));
 	this->initViewMatrix();

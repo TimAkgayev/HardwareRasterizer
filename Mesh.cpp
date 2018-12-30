@@ -56,6 +56,59 @@ void Mesh::CreateDummyCube(int width, int height)
 
 }
 
+void Mesh::CreateFloor(std::string pathToHeightmap, int length, int width)
+{
+	mVertexList.clear();
+	mIndexList.clear();
+
+	Bitmap heightMap(pathToHeightmap);
+	POINT dim = heightMap.GetDimensions();
+
+	//create the vertices
+	Vertex* floorMesh = new Vertex[dim.x*dim.y];
+
+	for (int xdim = 0; xdim < dim.x; xdim++)
+	{
+		for (int zdim = 0; zdim < dim.y; zdim++)
+		{
+			float height = heightMap.GetData()[xdim + zdim*dim.x];
+		
+			float color = (height)/ 255.0f;
+			floorMesh[xdim + zdim*dim.x] = { XMFLOAT3((float)xdim, 1.0f , (float)zdim), XMFLOAT4(0.0f, color, color, 1.0f) };
+		} 
+	}
+
+
+	mVertexList = std::vector<Vertex>(floorMesh, floorMesh + (dim.x*dim.y));
+	delete floorMesh;
+	floorMesh = NULL;
+	
+	//create the indices
+	int numXCells = dim.x - 1;
+	int numYCells = dim.y - 1;
+	int vertsPerRow = dim.x;
+
+	for (int cellX = 0; cellX < numXCells; cellX++)
+	{
+		for (int cellY = 0; cellY < numYCells; cellY++)
+		{
+			int	index0 = cellY * vertsPerRow + cellX;
+			int	index1 = index0 + 1;
+			int	index2 = (cellY + 1) * vertsPerRow + cellX;
+			int	index3 = index2 + 1;
+
+			
+			mIndexList.push_back(index0);
+			mIndexList.push_back(index3);
+			mIndexList.push_back(index1);
+			mIndexList.push_back(index0);
+			mIndexList.push_back(index2);
+			mIndexList.push_back(index3);
+
+		}
+	}
+}
+
 
 std::vector<Vertex>& Mesh::GetVertexList() 
 {

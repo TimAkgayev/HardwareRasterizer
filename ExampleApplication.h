@@ -4,7 +4,7 @@
 #include "Mesh.h"
 #include <map>
 
-enum { W_TIMER = 1, A_TIMER, D_TIMER, S_TIMER };
+enum { W_TIMER = 1, A_TIMER, D_TIMER, S_TIMER, UP_TIMER, DOWN_TIMER };
 
 class ExampleApp : public Application
 {
@@ -19,6 +19,8 @@ public:
 		mKeyDownMap.insert(std::make_pair(0x53, false));
 		mKeyDownMap.insert(std::make_pair(0x41, false));
 		mKeyDownMap.insert(std::make_pair(0x44, false));
+		mKeyDownMap.insert(std::make_pair(VK_UP, false));
+		mKeyDownMap.insert(std::make_pair(VK_DOWN, false));
 	}
 
 
@@ -26,6 +28,7 @@ public:
 	{
 		mWindow = window;
 		mCubeMesh.CreateDummyCube(10, 20);
+		mFloorMesh.CreateFloor("..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp", 10, 10);
 	}
 	virtual int  ApplicationUpdate() 
 	{
@@ -40,6 +43,9 @@ public:
 
 		XMMATRIX mat = XMMatrixRotationX(t);
 		mRasterizer->DrawWorldObject((WorldObject*)&mCubeMesh, mat);
+
+		XMMATRIX floorMat = XMMatrixIdentity();
+		mRasterizer->DrawWorldObject((WorldObject*)&mFloorMesh, floorMat);
 
 		mRasterizer->SetViewMatrix(mCamera.View());
 
@@ -67,6 +73,10 @@ public:
 				mCamera.Move(XMFLOAT3(moveSpeed, 0.0f, 0.0f));
 			else if (wParam == A_TIMER)
 				mCamera.Move(XMFLOAT3(-moveSpeed, 0.0f, 0.0f));
+			else if (wParam == UP_TIMER)
+				mCamera.Move(XMFLOAT3(0.0f, moveSpeed, 0.0f));
+			else if (wParam == DOWN_TIMER)
+				mCamera.Move(XMFLOAT3(0.0f, -moveSpeed, 0.0f));
 		
 
 		}break;
@@ -75,30 +85,43 @@ public:
 		{
 	
 			if (wParam == 0x57) //W key
-				if (!mKeyDownMap[0x57])
+				if (!mKeyDownMap[wParam])
 				{
 					SetTimer(mWindow, W_TIMER, 10, NULL);
-					mKeyDownMap[0x57] = true;
+					mKeyDownMap[wParam] = true;
 				}
 			
-			if (wParam == 0x53) //S key
-				if (!mKeyDownMap[0x53])
+			 if (wParam == 0x53) //S key
+				if (!mKeyDownMap[wParam])
 				{
 					SetTimer(mWindow, S_TIMER, 10, NULL);
-					mKeyDownMap[0x53] = true;
+					mKeyDownMap[wParam] = true;
 				}
-			if (wParam == 0x41) //A key
-				if (!mKeyDownMap[0x41])
+			 if (wParam == 0x41) //A key
+				if (!mKeyDownMap[wParam])
 				{
 					SetTimer(mWindow, A_TIMER, 10, NULL);
-					mKeyDownMap[0x41] = true;
+					mKeyDownMap[wParam] = true;
 				}
-			if (wParam == 0x44) //D key
-				if (!mKeyDownMap[0x44])
+			 if (wParam == 0x44) //D key
+				if (!mKeyDownMap[wParam])
 				{
 					SetTimer(mWindow, D_TIMER, 10, NULL);
-					mKeyDownMap[0x44] = true;
+					mKeyDownMap[wParam] = true;
 				}
+			 if (wParam == VK_UP)
+				if (!mKeyDownMap[wParam])
+				{
+					SetTimer(mWindow, UP_TIMER, 10, NULL);
+					mKeyDownMap[wParam] = true;
+				}
+			 if (wParam == VK_DOWN) 
+				if (!mKeyDownMap[wParam])
+				{
+					SetTimer(mWindow, DOWN_TIMER, 10, NULL);
+					mKeyDownMap[wParam] = true;
+				}
+
 
 		} break;
 
@@ -107,23 +130,33 @@ public:
 			if (wParam == 0x57) //W key
 			{
 				KillTimer(mWindow, W_TIMER);
-				mKeyDownMap[0x57] = false;
+				mKeyDownMap[wParam] = false;
 		
 			}
-			if (wParam == 0x53) //S key
+			 if (wParam == 0x53) //S key
 			{
 				KillTimer(mWindow, S_TIMER);
-				mKeyDownMap[0x53] = false;
+				mKeyDownMap[wParam] = false;
 			}
-			if (wParam == 0x41) //A key
+			 if (wParam == 0x41) //A key
 			{
 				KillTimer(mWindow, A_TIMER);
-				mKeyDownMap[0x41] = false;
+				mKeyDownMap[wParam] = false;
 			}
-			if (wParam == 0x44) //D key
+			 if (wParam == 0x44) //D key
 			{
 				KillTimer(mWindow, D_TIMER);
-				mKeyDownMap[0x44] = false;
+				mKeyDownMap[wParam] = false;
+			}
+			 if (wParam == VK_UP) //D key
+			{
+				KillTimer(mWindow, UP_TIMER);
+				mKeyDownMap[wParam] = false;
+			}
+			 if (wParam == VK_DOWN) //D key
+			{
+				KillTimer(mWindow, DOWN_TIMER);
+				mKeyDownMap[wParam] = false;
 			}
 
 		}break;
@@ -147,5 +180,6 @@ private:
 
 	Camera mCamera;
 	Mesh mCubeMesh;
+	Mesh mFloorMesh;
 	
 };
