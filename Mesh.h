@@ -3,7 +3,7 @@
 #include <DirectXMath.h>
 #include <Windows.h>
 #include "WorldObject.h"
-#include "Bitmap.h"
+#include <Bitmap.h>
 #include <vector>
 #include <string>
 using namespace DirectX;

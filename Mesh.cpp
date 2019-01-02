@@ -61,7 +61,7 @@ void Mesh::CreateFloor(std::string pathToHeightmap, int length, int width)
 	mVertexList.clear();
 	mIndexList.clear();
 
-	Bitmap heightMap(pathToHeightmap);
+	SoftwareBitmap::Bitmap heightMap(pathToHeightmap);
 	POINT dim = heightMap.GetDimensions();
 
 	//create the vertices
