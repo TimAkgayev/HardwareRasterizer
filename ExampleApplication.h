@@ -1,7 +1,9 @@
 #pragma once
-#include "Application.h"
+#include "ApplicationInterface.h"
 #include "Camera.h"
 #include "Mesh.h"
+#include "DebugWindow.h"
+#include "C:\\Users\Tim\Documents\Visual Studio Projects\SoftwareRasterizer\SoftwareBitmap\Bitmap.h"
 #include <map>
 
 enum { W_TIMER = 1, A_TIMER, D_TIMER, S_TIMER, UP_TIMER, DOWN_TIMER };
@@ -21,14 +23,19 @@ public:
 		mKeyDownMap.insert(std::make_pair(0x44, false));
 		mKeyDownMap.insert(std::make_pair(VK_UP, false));
 		mKeyDownMap.insert(std::make_pair(VK_DOWN, false));
+
+		mDbgWindow = new DebugWindow(mHINSTANCE);
 	}
 
 
-	virtual void ApplicationInitialization(HWND window) 
+	virtual void ApplicationInitialization(HWND window, HINSTANCE hInstance) 
 	{
 		mWindow = window;
 		mCubeMesh.CreateDummyCube(10, 20);
-		mFloorMesh.CreateFloor("..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp", 10, 10);
+		mFloorMesh.CreateFloor(L"..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp", 10, 10);
+		mHINSTANCE = hInstance;
+
+		mBitmap = new SoftwareBitmap::Bitmap(L"..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp");
 	}
 	virtual int  ApplicationUpdate() 
 	{
@@ -48,6 +55,8 @@ public:
 		mRasterizer->DrawWorldObject((WorldObject*)&mFloorMesh, floorMat);
 
 		mRasterizer->SetViewMatrix(mCamera.View());
+
+		mDbgWindow->DisplayBitmap(mBitmap);
 
 		
 		return UPDATE_NORMAL; 
@@ -177,9 +186,13 @@ private:
 
 	std::map<int, bool> mKeyDownMap;
 
-
+	DebugWindow* mDbgWindow;
 	Camera mCamera;
 	Mesh mCubeMesh;
 	Mesh mFloorMesh;
+
+	SoftwareBitmap::Bitmap* mBitmap;
+
+	HINSTANCE mHINSTANCE;
 	
 };

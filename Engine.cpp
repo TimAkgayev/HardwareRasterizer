@@ -250,7 +250,7 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 
 	//compile the vertex shader
 	ID3DBlob* pVSBlob = NULL;
-	HRESULT hr = CompileShaderFromFile(TEXT("DX10RendererEffect.fx"), "VS_MAIN", "vs_4_0", &pVSBlob);
+	HRESULT hr = CompileShaderFromFile(TEXT("DX10HardwareRendererEffect.fx"), "VS_MAIN", "vs_4_0", &pVSBlob);
 	if (FAILED(hr))
 	{
 		MessageBox(NULL, L"The FX file cannot be compiled", L"Error", MB_OK);
@@ -267,7 +267,7 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 
 	// compile the pixel shader
 	ID3DBlob* pPSBlob = NULL;
-	hr = CompileShaderFromFile(L"DX10RendererEffect.fx", "PS_MAIN", "ps_4_0", &pPSBlob);
+	hr = CompileShaderFromFile(L"DX10HardwareRendererEffect.fx", "PS_MAIN", "ps_4_0", &pPSBlob);
 	if (FAILED(hr))
 	{
 		MessageBox(NULL, L"The FX file cannot be compiled.", L"Error", MB_OK);
@@ -323,9 +323,9 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 
 	//set up rasterizer flags ============================================
 	D3D10_RASTERIZER_DESC rasterizerState;
-	rasterizerState.CullMode = D3D10_CULL_BACK;
+	rasterizerState.CullMode = D3D10_CULL_NONE;
 	rasterizerState.FillMode = D3D10_FILL_SOLID;
-	rasterizerState.FrontCounterClockwise = false;
+	rasterizerState.FrontCounterClockwise = true;
 	rasterizerState.DepthBias = false;
 	rasterizerState.DepthBiasClamp = 0;
 	rasterizerState.SlopeScaledDepthBias = 0;
@@ -358,7 +358,7 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 
 
 	//initialize application
-	mApplicationInstance->ApplicationInitialization(mMainWindowHandle);
+	mApplicationInstance->ApplicationInitialization(mMainWindowHandle, hInstance);
 	mApplicationInstance->SetRasterizer((RasterizerInterface*)this);
 
 

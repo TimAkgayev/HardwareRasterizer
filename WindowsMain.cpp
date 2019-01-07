@@ -62,8 +62,6 @@ resetEntry:
 
 	ApplicationEngine.CreateEngineWindow(TEXT(APPLICATION_WINDOW_CLASS_NAME), hinstance, RunningApplication);
 
-
-
 	while (TRUE)
 	{
 		// test if there is a message in queue, if so get it and remove it from the queue

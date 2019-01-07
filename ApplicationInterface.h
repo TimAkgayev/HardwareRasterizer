@@ -12,7 +12,7 @@ public:
 	Application() {}
 	virtual ~Application() {}
 
-	virtual void ApplicationInitialization(HWND window) = 0;
+	virtual void ApplicationInitialization(HWND window, HINSTANCE hInstance) = 0;
 	virtual int  ApplicationUpdate() = 0;
 	virtual void ApplicationShutdown() = 0;
 	virtual void ApplicationWindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) = 0;

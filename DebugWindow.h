@@ -1,7 +1,7 @@
 #pragma once
 #include "Bitmap.h"
 #include <Windows.h>
-#include "C:\\Users\Tim\Documents\Visual Studio Projects\SoftwareRasterizer\Common\SRasterizer.h"
+#include "C:\\Users\Tim\Documents\Visual Studio Projects\SoftwareRasterizer\SoftwareRasterizer\SRasterizer.h"
 
 
 

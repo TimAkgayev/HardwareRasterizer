@@ -3,6 +3,7 @@
 Mesh::Mesh()
 {
 	ObjectType = MESH_OBJECT;
+
 }
 
 Mesh::~Mesh()
@@ -56,37 +57,44 @@ void Mesh::CreateDummyCube(int width, int height)
 
 }
 
-void Mesh::CreateFloor(std::string pathToHeightmap, int length, int width)
+void Mesh::CreateFloor(std::wstring pathToHeightmap, int length, int width)
 {
 	mVertexList.clear();
 	mIndexList.clear();
 
+
 	SoftwareBitmap::Bitmap heightMap(pathToHeightmap);
-	POINT dim = heightMap.GetDimensions();
+
+	int bmpHeight = heightMap.GetHeight();
+	int bmpWidth = heightMap.GetWidth();
+
+
 
 	//create the vertices
-	Vertex* floorMesh = new Vertex[dim.x*dim.y];
-
-	for (int xdim = 0; xdim < dim.x; xdim++)
+	Vertex* floorMesh = new Vertex[bmpWidth*bmpHeight];
+	UCHAR* source_mem = (UCHAR*)heightMap.GetData();
+	for (int xdim = 0; xdim < bmpWidth; xdim++)
 	{
-		for (int zdim = 0; zdim < dim.y; zdim++)
+		for (int zdim = 0; zdim < bmpHeight; zdim++)
 		{
-			float height = heightMap.GetData()[xdim + zdim*dim.x];
+			
+			float height = source_mem[xdim + zdim*heightMap.GetPitch()];
 		
 			float color = (height)/ 255.0f;
-			floorMesh[xdim + zdim*dim.x] = { XMFLOAT3((float)xdim, height , (float)zdim), XMFLOAT2(float(xdim)/dim.x, float(zdim)/dim.y) };
+			floorMesh[xdim + zdim*bmpWidth] = { XMFLOAT3((float)xdim, height , (float)zdim), XMFLOAT2(float(xdim)/ bmpWidth, float(zdim)/ bmpHeight) };
 		} 
 	}
 
 
-	mVertexList = std::vector<Vertex>(floorMesh, floorMesh + (dim.x*dim.y));
+	mVertexList = std::vector<Vertex>(floorMesh, floorMesh + (bmpWidth*bmpHeight));
+
 	delete floorMesh;
 	floorMesh = NULL;
 	
 	//create the indices
-	int numXCells = dim.x - 1;
-	int numYCells = dim.y - 1;
-	int vertsPerRow = dim.x;
+	int numXCells = bmpWidth - 1;
+	int numYCells = bmpHeight - 1;
+	int vertsPerRow = bmpWidth;
 
 	for (int cellX = 0; cellX < numXCells; cellX++)
 	{

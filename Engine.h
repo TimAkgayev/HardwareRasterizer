@@ -1,5 +1,5 @@
 #pragma once
-#include "Application.h"
+#include "ApplicationInterface.h"
 #include <d3d10.h>
 #include "D3DX\D3DX10.h"
 #include <DirectXMath.h>
@@ -8,6 +8,7 @@
 #include "WorldObject.h"
 #include "Mesh.h"
 #include "RasterizerInterface.h"
+
 
 #define NUM_VERTEX_ELEMENTS 2
 using namespace DirectX;
@@ -68,8 +69,6 @@ protected:
 
 
 
-
-	
 
 
 }; 

@@ -24,7 +24,7 @@ DebugWindow::DebugWindow(HINSTANCE hInstance)
 	TEXT("Debug"), // title
 	WS_VISIBLE | WS_SYSMENU | WS_THICKFRAME | WS_CAPTION | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,		//style
 	0, 0,	  // initial x,y
-	700, 300,  // initial width, height
+	700, 500,  // initial width, height
 	NULL,		// handle to parent 
 	NULL,		 // handle to menu
 	hInstance,	// instance of this application
@@ -41,9 +41,9 @@ DebugWindow::~DebugWindow()
 
 void DebugWindow::DisplayBitmap(SoftwareBitmap::Bitmap * bmp)
 {
-
-	softwareRasterizer->DrawBitmapWithClipping(bmp, 0, 0);
-	
+	RECT clientRect;
+	GetClientRect(mWindowHandle, &clientRect);
+	softwareRasterizer->DrawBitmapWithClipping(bmp, 0, 0, clientRect);
 }
 
 
