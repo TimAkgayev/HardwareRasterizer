@@ -1,18 +1,71 @@
 #include "Mesh.h"
 
+
+Line::Line()
+{
+	ObjectType = LINE_OBJECT;
+}
+
+void Line::CreateLine(float x1, float y1, float z1, float x2, float y2, float z2, XMFLOAT4 color1, XMFLOAT4 color2)
+{
+	LineVertex mesh[2] =
+	{
+		{ XMFLOAT3(x1, y1, z1), color1 },
+		{ XMFLOAT3(x2, y2, z2), color2 }
+	};
+
+	mx1 = x1;
+	my1 = y1;
+	mz1 = z1;
+	mx2 = x2;
+	my2 = y2;
+	mz2 = z2;
+
+	mcolor1 = color1;
+	mcolor2 = color2;
+
+	for (LineVertex v : mesh)
+		mVertexList.push_back(v);
+}
+
+void Line::SetSecondPoint(float x2, float y2, float z2)
+{
+	mVertexList.clear();
+
+	LineVertex mesh[2] =
+	{
+		{ XMFLOAT3(mx1, my1, mz1), mcolor1 },
+		{ XMFLOAT3(x2, y2, z2), mcolor2 }
+	};
+
+	mx2 = x2;
+	my2 = y2;
+	mz2 = z2;
+
+	for (LineVertex v : mesh)
+		mVertexList.push_back(v);
+}
+
+std::vector<LineVertex>& Line::GetVertexList()
+{
+	return mVertexList;
+}
+
+
 Mesh::Mesh()
 {
 	ObjectType = MESH_OBJECT;
-
+	
 }
 
 Mesh::~Mesh()
 {
 }
 
+
 void Mesh::CreateDummyCube(int width, int height)
 {
-	Vertex mesh[] =
+	MeshVertex mesh[] =
 	{
 		{ XMFLOAT3(-width/2.0f, height/2.0f, -width/2.0f), XMFLOAT2(0.0f, 0.0f) },
 		{ XMFLOAT3(width/2.0f, height/2.0f, -width/2.0f), XMFLOAT2(0.0f, 1.0f) },
@@ -21,10 +74,10 @@ void Mesh::CreateDummyCube(int width, int height)
 		{ XMFLOAT3(-width/2.0f, -height/2.0f, -width/2.0f), XMFLOAT2(1.0f, 0.0f) },
 		{ XMFLOAT3(width/2.0f, -height/2.0f, -width/2.0f), XMFLOAT2(1.0f, 1.0f) },
 		{ XMFLOAT3(width/2.0f, -height/2.0f, width/2.0f), XMFLOAT2(1.0f, 1.0f) },
-		{ XMFLOAT3(-width/2.0f, -height/2.0f, width/2.0f), XMFLOAT2(0.5f, 0.0f) },
+		{ XMFLOAT3(-width/2.0f, -height/2.0f, width/2.0f), XMFLOAT2(0.5f, 0.0f) }
 	};
 
-	for (Vertex v : mesh)
+	for (MeshVertex v : mesh)
 		mVertexList.push_back(v);
 	
 	//create index buffer
@@ -71,7 +124,7 @@ void Mesh::CreateFloor(std::wstring pathToHeightmap, int length, int width)
 
 
 	//create the vertices
-	Vertex* floorMesh = new Vertex[bmpWidth*bmpHeight];
+	MeshVertex* floorMesh = new MeshVertex[bmpWidth*bmpHeight];
 	UCHAR* source_mem = (UCHAR*)heightMap.GetData();
 	for (int xdim = 0; xdim < bmpWidth; xdim++)
 	{
@@ -86,7 +139,7 @@ void Mesh::CreateFloor(std::wstring pathToHeightmap, int length, int width)
 	}
 
 
-	mVertexList = std::vector<Vertex>(floorMesh, floorMesh + (bmpWidth*bmpHeight));
+	mVertexList = std::vector<MeshVertex>(floorMesh, floorMesh + (bmpWidth*bmpHeight));
 
 	delete floorMesh;
 	floorMesh = NULL;
@@ -115,10 +168,18 @@ void Mesh::CreateFloor(std::wstring pathToHeightmap, int length, int width)
 
 		}
 	}
+
+
 }
 
 
-std::vector<Vertex>& Mesh::GetVertexList() 
+void Mesh::SetTexture(std::wstring path)
+{
+	mTexturePath = path;
+}
+
+
+std::vector<MeshVertex>& Mesh::GetVertexList() 
 {
 	return mVertexList;
 }
@@ -127,4 +188,10 @@ std::vector<WORD>& Mesh::GetIndexList()
 {
 	return mIndexList;
 }
+
+std::wstring Mesh::GetTexturePath()
+{
+	return mTexturePath;
+}
+
 

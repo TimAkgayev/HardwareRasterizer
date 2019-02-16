@@ -1,11 +1,19 @@
 #include "Engine.h"
 
-D3D10_INPUT_ELEMENT_DESC DX10VertexLayout[] =
+D3D10_INPUT_ELEMENT_DESC MeshVertexLayout[] =
 {
 	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
 	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 }
 	
 };
+
+D3D10_INPUT_ELEMENT_DESC LineVertexLayout[] =
+{
+	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
+	{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 }
+
+};
+
 
 struct ShaderProjectionVars
 {
@@ -38,50 +46,114 @@ int Engine::Loop()
 	//load any meshes into memory
 	for (WorldObject* obj : WorldObject::ObjectList)
 	{
-		if (obj->ObjectType != MESH_OBJECT)
-			continue;
-		
-		//make sure that this mesh is not already loaded
-		bool meshExists = false;
-		for (MeshDescriptor& desc : mLoadedMeshes)
-			if (desc.MeshObjectPtr == obj)
+		if (obj->ObjectType == MESH_OBJECT)
+		{
+
+			//make sure that this mesh is not already loaded
+			bool meshExists = false;
+			for (MeshDescriptor& desc : mLoadedMeshes)
+				if (desc.MeshObjectPtr == obj)
+				{
+					meshExists = true;
+					break;
+				}
+
+			if (meshExists)
+				continue;
+
+			MeshDescriptor meshDesc;
+			meshDesc.MeshObjectPtr = obj;
+
+			Mesh* mesh = (Mesh*)obj;
+
+			//create a vertex buffer
+			D3D10_BUFFER_DESC bufferDesc;
+			bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+			bufferDesc.ByteWidth = sizeof(D3DMeshVertex) * mesh->GetVertexList().size(); //total size of buffer in bytes
+			bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+			bufferDesc.CPUAccessFlags = 0;
+			bufferDesc.MiscFlags = 0;
+
+			D3D10_SUBRESOURCE_DATA InitData;
+			ZeroMemory(&InitData, sizeof(InitData));
+			InitData.pSysMem = &(mesh->GetVertexList()[0]);
+			if (FAILED(mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &meshDesc.VertexBuffer))) return UPDATE_NORMAL;
+
+			//create an index buffer if it's not a line list
+
+
+			bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+			bufferDesc.ByteWidth = sizeof(WORD) * mesh->GetIndexList().size();
+			bufferDesc.BindFlags = D3D10_BIND_INDEX_BUFFER;
+			bufferDesc.CPUAccessFlags = 0;
+
+			InitData.pSysMem = &(mesh->GetIndexList()[0]);
+			mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &meshDesc.IndexBuffer);
+
+
+			//Create texture views
+			D3DX10CreateShaderResourceViewFromFile(mD3D10Device, mesh->GetTexturePath().c_str(), NULL, NULL, &meshDesc.mTextureResourceView, NULL);
+
+
+			mLoadedMeshes.push_back(meshDesc);
+		}
+
+		else if (obj->ObjectType == LINE_OBJECT)
+		{
+
+			//make sure that this mesh is not already loaded
+			bool objExists = false;
+			for (LineDescriptor& desc : mLoadedLines)
 			{
-				meshExists = true;
-				break;
+				if (desc.LineObjectPtr == obj)
+				{
+					//update
+					desc.VertexBuffer->Release();
+
+					Line* line = (Line*)obj;
+
+					//create a vertex buffer
+					D3D10_BUFFER_DESC bufferDesc;
+					bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+					bufferDesc.ByteWidth = sizeof(D3DLineVertex) * line->GetVertexList().size(); //total size of buffer in bytes
+					bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+					bufferDesc.CPUAccessFlags = 0;
+					bufferDesc.MiscFlags = 0;
+
+					D3D10_SUBRESOURCE_DATA InitData;
+					ZeroMemory(&InitData, sizeof(InitData));
+					InitData.pSysMem = &(line->GetVertexList()[0]);
+					if (FAILED(mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &desc.VertexBuffer))) return UPDATE_NORMAL;
+
+					objExists = true;
+					break;
+				}
 			}
 
-		if (meshExists)
-			continue;
+			if (objExists)
+				continue;
 
-		MeshDescriptor meshDesc;
-		meshDesc.MeshObjectPtr = obj;
 
-		Mesh* mesh = (Mesh*)obj;
+			LineDescriptor lineDesc;
+			lineDesc.LineObjectPtr = obj;
 
-		//create a vertex buffer
-		D3D10_BUFFER_DESC bufferDesc;
-		bufferDesc.Usage = D3D10_USAGE_DEFAULT;
-		bufferDesc.ByteWidth = sizeof(D3DVertex) * mesh->GetVertexList().size(); //total size of buffer in bytes
-		bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
-		bufferDesc.CPUAccessFlags = 0;
-		bufferDesc.MiscFlags = 0;
+			Line* line = (Line*)obj;
 
-		D3D10_SUBRESOURCE_DATA InitData;
-		ZeroMemory(&InitData, sizeof(InitData));
-		InitData.pSysMem = &(mesh->GetVertexList()[0]);
-		if (FAILED(mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &meshDesc.VertexBuffer))) return UPDATE_NORMAL;
+			//create a vertex buffer
+			D3D10_BUFFER_DESC bufferDesc;
+			bufferDesc.Usage = D3D10_USAGE_DEFAULT;
+			bufferDesc.ByteWidth = sizeof(D3DLineVertex) * line->GetVertexList().size(); //total size of buffer in bytes
+			bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+			bufferDesc.CPUAccessFlags = 0;
+			bufferDesc.MiscFlags = 0;
 
-		//create an index buffer
-		bufferDesc.Usage = D3D10_USAGE_DEFAULT;
-		bufferDesc.ByteWidth = sizeof(WORD) * mesh->GetIndexList().size();
-		bufferDesc.BindFlags = D3D10_BIND_INDEX_BUFFER;
-		bufferDesc.CPUAccessFlags = 0;
+			D3D10_SUBRESOURCE_DATA InitData;
+			ZeroMemory(&InitData, sizeof(InitData));
+			InitData.pSysMem = &(line->GetVertexList()[0]);
+			if (FAILED(mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &lineDesc.VertexBuffer))) return UPDATE_NORMAL;
 
-		InitData.pSysMem = &(mesh->GetIndexList()[0]);
-		mD3D10Device->CreateBuffer(&bufferDesc, &InitData, &meshDesc.IndexBuffer);
-
-		mLoadedMeshes.push_back(meshDesc);
-
+			mLoadedLines.push_back(lineDesc);
+		}
 	}
 
 	// Update shader variables
@@ -98,37 +170,44 @@ int Engine::Loop()
 	t = (dwTimeCur - dwTimeStart) / 1000.0f;
 
 	//interpolate the view matrices
-
-
 	XMMATRIX diffMatrix = mNewViewMatrix - mViewMatrix;
-	XMMATRIX partialMatrix = diffMatrix / 100.0f;
+	XMMATRIX partialMatrix = diffMatrix / 30.0f;
 
 
-	mViewMatrix += partialMatrix;
+	//mViewMatrix += partialMatrix;
+	mViewMatrix = mNewViewMatrix;
+
 		
 	
 	shaderBuffer.mView = XMMatrixTranspose(mViewMatrix);
 	
 	mD3D10Device->PSSetSamplers(0, 1, &mD3D10SamplerState);
-	mD3D10Device->PSSetShaderResources(0, 1, &mD3D10TextureResourceView);
+	
 
 	// Render the mesh list
+
+	mD3D10Device->IASetInputLayout(mD3D10MeshInputLayout);
+	mD3D10Device->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mD3D10Device->VSSetShader(mMeshVertexShader);
+	mD3D10Device->PSSetShader(mMeshPixelShader);
+
 	for (UINT objIndex : mMeshDrawList)
 	{
+		//set the objects world position
 		shaderBuffer.mWorld = XMMatrixTranspose(mLoadedMeshes[objIndex].WorldMatrix);
 		mD3D10Device->UpdateSubresource(mD3D10ConstantBuffer, 0, NULL, &shaderBuffer, 0, 0);
 
-		mD3D10Device->VSSetShader(mD3D10VertexShader);
+		//draw mesh objects
 		mD3D10Device->VSSetConstantBuffers(0, 1, &mD3D10ConstantBuffer);
-		mD3D10Device->PSSetShader(mD3D10PixelShader);
+		mD3D10Device->PSSetShaderResources(0, 1, &mLoadedMeshes[objIndex].mTextureResourceView);
+
+
 
 		// Set vertex and index buffer
-		UINT stride = sizeof(D3DVertex);
+		UINT stride = sizeof(D3DMeshVertex);
 		UINT offset = 0;
 		mD3D10Device->IASetVertexBuffers(0, 1, &mLoadedMeshes[objIndex].VertexBuffer, &stride, &offset);
 		mD3D10Device->IASetIndexBuffer(mLoadedMeshes[objIndex].IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-
-		mD3D10Device->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 
 		//draw
@@ -137,14 +216,43 @@ int Engine::Loop()
 		UINT numIndices = tempDesc.ByteWidth / sizeof(WORD);
 
 		mD3D10Device->DrawIndexed(numIndices, 0, 0);
+		
+	}
+
+
+	mD3D10Device->IASetInputLayout(mD3D10LineInputLayout);
+	mD3D10Device->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
+	mD3D10Device->VSSetShader(mLineVertexShader);
+	mD3D10Device->PSSetShader(mLinePixelShader);
+	for (UINT objIndex : mLineDrawList)
+	{
+		//set the objects world position
+		shaderBuffer.mWorld = XMMatrixTranspose(mLoadedLines[objIndex].WorldMatrix);
+		mD3D10Device->UpdateSubresource(mD3D10ConstantBuffer, 0, NULL, &shaderBuffer, 0, 0);
+
+		//draw mesh objects
+	
+
+		mD3D10Device->VSSetConstantBuffers(0, 1, &mD3D10ConstantBuffer);
+
+
+		// Set vertex and index buffer
+		UINT stride = sizeof(D3DLineVertex);
+		UINT offset = 0;
+		mD3D10Device->IASetVertexBuffers(0, 1, &mLoadedLines[objIndex].VertexBuffer, &stride, &offset);
+		
+
+
+		//draw
+		mD3D10Device->Draw(2, 0);
 	}
 
 	// Present the information rendered to the back buffer to the front buffer (the screen)
 	mD3D10SwapChain->Present(0, 0);
 
-	//empty the list
+	//empty the lists
 	mMeshDrawList.clear();
-
+	mLineDrawList.clear();
 
 	return UPDATE_NORMAL;
 }
@@ -217,8 +325,7 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 		return;
 	}
 
-	//Create texture views
-	D3DX10CreateShaderResourceViewFromFile(mD3D10Device, L"..\\HardwareRasterizer\\Textures\\Test.bmp", NULL, NULL, &mD3D10TextureResourceView, NULL);
+	
 
 	// create render target for merger state ===================================================
 	ID3D10Texture2D* pBackBuffer;
@@ -248,35 +355,69 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 
 	//load the effects file and set up projections to be used ============================================
 
-	//compile the vertex shader
-	ID3DBlob* pVSBlob = NULL;
-	HRESULT hr = CompileShaderFromFile(TEXT("DX10HardwareRendererEffect.fx"), "VS_MAIN", "vs_4_0", &pVSBlob);
+	//compile the mesh vertex shader
+	ID3DBlob* pMeshVSBlob = NULL;
+	HRESULT hr = CompileShaderFromFile(TEXT("DX10HardwareRendererEffect.fx"), "VS_MAIN_MESH", "vs_4_0", &pMeshVSBlob);
 	if (FAILED(hr))
 	{
 		MessageBox(NULL, L"The FX file cannot be compiled", L"Error", MB_OK);
 		return;
 	}
 
-	//create the vertex shader
-	hr = mD3D10Device->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), &mD3D10VertexShader);
+	//create the mesh vertex shader
+	hr = mD3D10Device->CreateVertexShader(pMeshVSBlob->GetBufferPointer(), pMeshVSBlob->GetBufferSize(), &mMeshVertexShader);
 	if (FAILED(hr))
 	{
-		pVSBlob->Release();
+		pMeshVSBlob->Release();
 		return;
 	}
 
-	// compile the pixel shader
-	ID3DBlob* pPSBlob = NULL;
-	hr = CompileShaderFromFile(L"DX10HardwareRendererEffect.fx", "PS_MAIN", "ps_4_0", &pPSBlob);
+	// compile the mesh pixel shader
+	ID3DBlob* pMeshPSBlob = NULL;
+	hr = CompileShaderFromFile(L"DX10HardwareRendererEffect.fx", "PS_MAIN_MESH", "ps_4_0", &pMeshPSBlob);
 	if (FAILED(hr))
 	{
 		MessageBox(NULL, L"The FX file cannot be compiled.", L"Error", MB_OK);
 		return;
 	}
 
-	// create the pixel shader
-	hr = mD3D10Device->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), &mD3D10PixelShader);
-	pPSBlob->Release();
+	// create the mesh pixel shader
+	hr = mD3D10Device->CreatePixelShader(pMeshPSBlob->GetBufferPointer(), pMeshPSBlob->GetBufferSize(), &mMeshPixelShader);
+	pMeshPSBlob->Release();
+	if (FAILED(hr))
+		return;
+
+
+
+	//compile the line vertex shader
+	ID3DBlob* pLineVSBlob = NULL;
+	hr = CompileShaderFromFile(TEXT("DX10HardwareRendererEffect.fx"), "VS_MAIN_LINE", "vs_4_0", &pLineVSBlob);
+	if (FAILED(hr))
+	{
+		MessageBox(NULL, L"The FX file cannot be compiled", L"Error", MB_OK);
+		return;
+	}
+
+	//create the mesh vertex shader
+	hr = mD3D10Device->CreateVertexShader(pLineVSBlob->GetBufferPointer(), pLineVSBlob->GetBufferSize(), &mLineVertexShader);
+	if (FAILED(hr))
+	{
+		pLineVSBlob->Release();
+		return;
+	}
+
+	// compile the mesh pixel shader
+	ID3D10Blob* pLinePSBlob = NULL;
+	hr = CompileShaderFromFile(L"DX10HardwareRendererEffect.fx", "PS_MAIN_LINE", "ps_4_0", &pLinePSBlob);
+	if (FAILED(hr))
+	{
+		MessageBox(NULL, L"The FX file cannot be compiled.", L"Error", MB_OK);
+		return;
+	}
+
+	// create the mesh pixel shader
+	hr = mD3D10Device->CreatePixelShader(pLinePSBlob->GetBufferPointer(), pLinePSBlob->GetBufferSize(), &mLinePixelShader);
+	pLinePSBlob->Release();
 	if (FAILED(hr))
 		return;
 
@@ -299,13 +440,14 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 	mNewViewMatrix = mViewMatrix;
 
 	// Initialize the projection matrix
-	mProjectionMatrix = XMMatrixPerspectiveFovLH(XM_PIDIV2, mD3D10Viewport.Width / (FLOAT)mD3D10Viewport.Height, 0.01f, 1000.0f);
+	mProjectionMatrix = XMMatrixPerspectiveFovLH(D3DX_PI/4, mD3D10Viewport.Width / (FLOAT)mD3D10Viewport.Height, 0.01f, 100000.0f);
 
 
-	// Create input layout ============================================
-	if (FAILED(mD3D10Device->CreateInputLayout(DX10VertexLayout, NUM_VERTEX_ELEMENTS, pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), &mD3D10InputLayout))) return;
-	mD3D10Device->IASetInputLayout(mD3D10InputLayout);
+	// Create input layouts ============================================
+	if (FAILED(mD3D10Device->CreateInputLayout(MeshVertexLayout, NUM_MESH_VERTEX_ELEMENTS, pMeshVSBlob->GetBufferPointer(), pMeshVSBlob->GetBufferSize(), &mD3D10MeshInputLayout))) return;
+	if (FAILED(mD3D10Device->CreateInputLayout(LineVertexLayout, NUM_LINE_VERTEX_ELEMENTS, pLineVSBlob->GetBufferPointer(), pLineVSBlob->GetBufferSize(), &mD3D10LineInputLayout))) return;
 
+	mD3D10Device->IASetInputLayout(mD3D10MeshInputLayout);
 
 	// Create the sample state
 	D3D10_SAMPLER_DESC sampDesc;
@@ -323,9 +465,9 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 
 	//set up rasterizer flags ============================================
 	D3D10_RASTERIZER_DESC rasterizerState;
-	rasterizerState.CullMode = D3D10_CULL_NONE;
+	rasterizerState.CullMode = D3D10_CULL_BACK;
 	rasterizerState.FillMode = D3D10_FILL_SOLID;
-	rasterizerState.FrontCounterClockwise = true;
+	rasterizerState.FrontCounterClockwise = false;
 	rasterizerState.DepthBias = false;
 	rasterizerState.DepthBiasClamp = 0;
 	rasterizerState.SlopeScaledDepthBias = 0;
@@ -381,10 +523,26 @@ void Engine::DrawWorldObject(WorldObject * obj, XMMATRIX& worldMatrix)
 				mLoadedMeshes[count].WorldMatrix = worldMatrix;
 				mMeshDrawList.push_back(count);
 				break;
+			}	
+
+			count++;
+		}
+	}
+	else if (obj->ObjectType == LINE_OBJECT)
+	{
+		UINT count = 0;
+		for (LineDescriptor desc : mLoadedLines)
+		{
+			if (desc.LineObjectPtr == obj) //find the object that was loaded
+			{
+				mLoadedLines[count].WorldMatrix = worldMatrix;
+				mLineDrawList.push_back(count);
+				break;
 			}
 
 			count++;
 		}
+
 	}
 }
 

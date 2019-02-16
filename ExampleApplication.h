@@ -5,8 +5,9 @@
 #include "DebugWindow.h"
 #include "C:\\Users\Tim\Documents\Visual Studio Projects\SoftwareRasterizer\SoftwareBitmap\Bitmap.h"
 #include <map>
+#include "cam.h"
 
-enum { W_TIMER = 1, A_TIMER, D_TIMER, S_TIMER, UP_TIMER, DOWN_TIMER };
+enum { W_TIMER = 1, A_TIMER, D_TIMER, S_TIMER, UP_TIMER, DOWN_TIMER, LEFT_TIMER, RIGHT_TIMER };
 
 class ExampleApp : public Application
 {
@@ -33,13 +34,32 @@ public:
 		mWindow = window;
 		mCubeMesh.CreateDummyCube(10, 20);
 		mFloorMesh.CreateFloor(L"..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp", 10, 10);
+
+		mCubeMesh.SetTexture(L"..\\HardwareRasterizer\\Textures\\Brick.bmp");
+		mFloorMesh.SetTexture(L"..\\HardwareRasterizer\\Textures\\Test.bmp");
+
+		mUp.CreateLine(0, 0, 0, 0, 1, 0, XMFLOAT4(0, 0, 1.0f, 1.0f), XMFLOAT4(0, 0, 1.0f, 1.0f));
+		mRight.CreateLine(0, 0, 0, 1, 0, 0, XMFLOAT4(1.0f, 0, 0.0f, 1.0f), XMFLOAT4(1.0f, 0, 0.0f, 1.0f));
+		mLookAt.CreateLine(0, 0, 0, 0, 0, 1, XMFLOAT4(0, 1.0f, 0.0f, 1.0f), XMFLOAT4(0, 1.0f, 0.0f, 1.0f));
+
+
+		topMark.CreateDummyCube(20, 20);
+		backMark.CreateDummyCube(20, 20);
+		bottomMark.CreateDummyCube(20, 20);
+
+
+		topMark.SetTexture(L"..\\HardwareRasterizer\\Textures\\TopBrick.bmp");
+		backMark.SetTexture(L"..\\HardwareRasterizer\\Textures\\BackBrick.bmp");
+		bottomMark.SetTexture(L"..\\HardwareRasterizer\\Textures\\BottomBrick.bmp");
+
+
 		mHINSTANCE = hInstance;
 
 		mBitmap = new SoftwareBitmap::Bitmap(L"..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp");
 	}
 	virtual int  ApplicationUpdate() 
 	{
-		// Update our time
+		// rotate a cube
 		static float t = 0.0f;
 
 		static DWORD dwTimeStart = 0;
@@ -47,14 +67,116 @@ public:
 		if (dwTimeStart == 0)
 			dwTimeStart = dwTimeCur;
 		t = (dwTimeCur - dwTimeStart) / 1000.0f;
-
 		XMMATRIX mat = XMMatrixRotationX(t);
 		mRasterizer->DrawWorldObject((WorldObject*)&mCubeMesh, mat);
+
+		//update the locator
+		XMFLOAT3 upV = mcam.GetUpVector();
+		XMFLOAT3 rightV = mcam.GetRightVector();
+		XMFLOAT3 lookV = mcam.GetLookAtVector();
+
+		mUp.SetSecondPoint(upV.x, upV.y, upV.z);
+		mRight.SetSecondPoint(rightV.x, rightV.y, rightV.z);
+		mLookAt.SetSecondPoint(lookV.x, lookV.y, lookV.z);
+
+		XMMATRIX upMat, rightMat, lookMat;
+		upMat = XMMatrixIdentity();
+		rightMat = XMMatrixIdentity();
+		lookMat = XMMatrixIdentity();
+
+		upMat = rightMat = lookMat = XMMatrixScaling( 3, 3 , 3);
+
+		XMMATRIX viewOffset = XMMatrixTranslation(-23.0f, -13.0f, 40.0f);
+
+		upMat *= viewOffset;
+		rightMat *= viewOffset;
+		lookMat *= viewOffset;
+
+		XMMATRIX viewR = mcam.GetViewRotationMatrix();
+		XMMATRIX viewRInv = XMMatrixInverse(NULL, viewR);
+
+		upMat *= viewRInv;
+		rightMat *= viewRInv;
+		lookMat *= viewRInv;
+
+
+		XMMATRIX viewT = mcam.GetViewTranslationMatrix();
+		XMMATRIX viewTInv = XMMatrixInverse(NULL, viewT);
+
+		upMat *= viewTInv;
+		rightMat *= viewTInv;
+		lookMat *= viewTInv;
+
+		
+		
+
+		mRasterizer->DrawWorldObject((WorldObject*)&mUp, upMat);
+		mRasterizer->DrawWorldObject((WorldObject*)&mRight, rightMat);
+		mRasterizer->DrawWorldObject((WorldObject*)&mLookAt, lookMat);
+
+
+		XMMATRIX topCubeMat, bottomCubeMat, backCubeMat;
+		topCubeMat = XMMatrixTranslation(0, 400.0f, -1000.0f);
+		bottomCubeMat = XMMatrixTranslation(0, -400.0f, -1000.0f);
+		backCubeMat = XMMatrixTranslation(0, 0.0f, -2000.0f);
+
+
+		mRasterizer->DrawWorldObject((WorldObject*)&topMark, topCubeMat);
+		mRasterizer->DrawWorldObject((WorldObject*)&bottomMark, bottomCubeMat);
+		mRasterizer->DrawWorldObject((WorldObject*)&backMark, backCubeMat);
+
 
 		XMMATRIX floorMat = XMMatrixIdentity();
 		mRasterizer->DrawWorldObject((WorldObject*)&mFloorMesh, floorMat);
 
-		mRasterizer->SetViewMatrix(mCamera.View());
+		//mRasterizer->SetViewMatrix(mCamera.View());
+		mRasterizer->SetViewMatrix(mcam.GetViewMatrix());
+
+		float moveSpeed = 0.5f;
+
+		static DWORD timeDeltaUp = 2;
+		static DWORD timeDeltaDown = 2;
+		static DWORD timeDeltaLeft = 2;
+		static DWORD timeDeltaRight = 2;
+
+		if (GetAsyncKeyState(0x57)) //W key
+			mcam.MoveAlongLookAt(-moveSpeed);
+
+		if (GetAsyncKeyState(0x53)) //S key
+			mcam.MoveAlongLookAt(moveSpeed);
+
+		if (GetAsyncKeyState(0x41)) //A key
+			mcam.MoveAlongRight(-moveSpeed);
+
+		if (GetAsyncKeyState(0x44)) //D key
+			mcam.MoveAlongRight(moveSpeed);
+
+		XMMATRIX yawMatrix, pitchMatrix;
+
+		if (GetAsyncKeyState(VK_UP) && ((timeGetTime() - timeDeltaUp) > 10))
+		{
+			timeDeltaUp = timeGetTime();
+			pitchMatrix = mcam.Pitch(-1);
+		}
+
+		if (GetAsyncKeyState(VK_DOWN) && ((timeGetTime() - timeDeltaDown) > 10))
+		{
+			timeDeltaDown = timeGetTime();
+			pitchMatrix = mcam.Pitch(1);
+		}
+
+		if (GetAsyncKeyState(VK_LEFT) && ((timeGetTime() - timeDeltaLeft) > 10))
+		{
+			timeDeltaLeft = timeGetTime();
+			yawMatrix = mcam.Yaw(-1);
+		}
+
+		if (GetAsyncKeyState(VK_RIGHT) && ((timeGetTime() - timeDeltaRight) > 10))
+		{
+			timeDeltaRight = timeGetTime();
+			yawMatrix = mcam.Yaw(1);
+		}
+
 
 		mDbgWindow->DisplayBitmap(mBitmap);
 
@@ -72,20 +194,6 @@ public:
 		case WM_TIMER:
 		{
 
-			float moveSpeed = 5.0f;
-
-			if (wParam == W_TIMER)
-				mCamera.Move(XMFLOAT3(0.0f, 0.0f, moveSpeed));
-			else if (wParam == S_TIMER)
-				mCamera.Move(XMFLOAT3(0.0f, 0.0f, -moveSpeed));
-			else if (wParam == D_TIMER)
-				mCamera.Move(XMFLOAT3(moveSpeed, 0.0f, 0.0f));
-			else if (wParam == A_TIMER)
-				mCamera.Move(XMFLOAT3(-moveSpeed, 0.0f, 0.0f));
-			else if (wParam == UP_TIMER)
-				mCamera.Move(XMFLOAT3(0.0f, moveSpeed, 0.0f));
-			else if (wParam == DOWN_TIMER)
-				mCamera.Move(XMFLOAT3(0.0f, -moveSpeed, 0.0f));
 		
 
 		}break;
@@ -93,81 +201,13 @@ public:
 		case WM_KEYDOWN: 
 		{
 	
-			if (wParam == 0x57) //W key
-				if (!mKeyDownMap[wParam])
-				{
-					SetTimer(mWindow, W_TIMER, 10, NULL);
-					mKeyDownMap[wParam] = true;
-				}
-			
-			 if (wParam == 0x53) //S key
-				if (!mKeyDownMap[wParam])
-				{
-					SetTimer(mWindow, S_TIMER, 10, NULL);
-					mKeyDownMap[wParam] = true;
-				}
-			 if (wParam == 0x41) //A key
-				if (!mKeyDownMap[wParam])
-				{
-					SetTimer(mWindow, A_TIMER, 10, NULL);
-					mKeyDownMap[wParam] = true;
-				}
-			 if (wParam == 0x44) //D key
-				if (!mKeyDownMap[wParam])
-				{
-					SetTimer(mWindow, D_TIMER, 10, NULL);
-					mKeyDownMap[wParam] = true;
-				}
-			 if (wParam == VK_UP)
-				if (!mKeyDownMap[wParam])
-				{
-					SetTimer(mWindow, UP_TIMER, 10, NULL);
-					mKeyDownMap[wParam] = true;
-				}
-			 if (wParam == VK_DOWN) 
-				if (!mKeyDownMap[wParam])
-				{
-					SetTimer(mWindow, DOWN_TIMER, 10, NULL);
-					mKeyDownMap[wParam] = true;
-				}
 
 
 		} break;
 
 		case WM_KEYUP:
 		{
-			if (wParam == 0x57) //W key
-			{
-				KillTimer(mWindow, W_TIMER);
-				mKeyDownMap[wParam] = false;
 		
-			}
-			 if (wParam == 0x53) //S key
-			{
-				KillTimer(mWindow, S_TIMER);
-				mKeyDownMap[wParam] = false;
-			}
-			 if (wParam == 0x41) //A key
-			{
-				KillTimer(mWindow, A_TIMER);
-				mKeyDownMap[wParam] = false;
-			}
-			 if (wParam == 0x44) //D key
-			{
-				KillTimer(mWindow, D_TIMER);
-				mKeyDownMap[wParam] = false;
-			}
-			 if (wParam == VK_UP) //D key
-			{
-				KillTimer(mWindow, UP_TIMER);
-				mKeyDownMap[wParam] = false;
-			}
-			 if (wParam == VK_DOWN) //D key
-			{
-				KillTimer(mWindow, DOWN_TIMER);
-				mKeyDownMap[wParam] = false;
-			}
-
 		}break;
 
 		case WM_DESTROY: //window is destoyed
@@ -190,6 +230,13 @@ private:
 	Camera mCamera;
 	Mesh mCubeMesh;
 	Mesh mFloorMesh;
+	Line mUp;
+	Line mRight;
+	Line mLookAt;
+
+	Mesh topMark, bottomMark, backMark;
+
+	cam mcam;
 
 	SoftwareBitmap::Bitmap* mBitmap;
 

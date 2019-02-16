@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-enum {MESH_OBJECT};
+enum {MESH_OBJECT = 0, LINE_OBJECT};
 
 class WorldObject
 {
