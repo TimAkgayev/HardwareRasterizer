@@ -1,11 +1,12 @@
 #pragma once
-#include "ApplicationInterface.h"
+#include "Interface_Application.h"
 #include "Camera.h"
 #include "Mesh.h"
 #include "DebugWindow.h"
 #include "C:\\Users\Tim\Documents\Visual Studio Projects\SoftwareRasterizer\SoftwareBitmap\Bitmap.h"
 #include <map>
-#include "cam.h"
+#include "Terrain.h"
+#include "CharacterController.h"
 
 enum { W_TIMER = 1, A_TIMER, D_TIMER, S_TIMER, UP_TIMER, DOWN_TIMER, LEFT_TIMER, RIGHT_TIMER };
 
@@ -33,7 +34,7 @@ public:
 	{
 		mWindow = window;
 		mCubeMesh.CreateDummyCube(10, 20);
-		mFloorMesh.CreateFloor(L"..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp", 10, 10);
+		mFloorMesh.CreateFromHeightMap(L"..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp", 100, 20);
 
 		mCubeMesh.SetTexture(L"..\\HardwareRasterizer\\Textures\\Brick.bmp");
 		mFloorMesh.SetTexture(L"..\\HardwareRasterizer\\Textures\\Test.bmp");
@@ -41,11 +42,6 @@ public:
 		mUp.CreateLine(0, 0, 0, 0, 1, 0, XMFLOAT4(0, 0, 1.0f, 1.0f), XMFLOAT4(0, 0, 1.0f, 1.0f));
 		mRight.CreateLine(0, 0, 0, 1, 0, 0, XMFLOAT4(1.0f, 0, 0.0f, 1.0f), XMFLOAT4(1.0f, 0, 0.0f, 1.0f));
 		mLookAt.CreateLine(0, 0, 0, 0, 0, 1, XMFLOAT4(0, 1.0f, 0.0f, 1.0f), XMFLOAT4(0, 1.0f, 0.0f, 1.0f));
-
-
-		topMark.CreateDummyCube(20, 20);
-		backMark.CreateDummyCube(20, 20);
-		bottomMark.CreateDummyCube(20, 20);
 
 
 		topMark.SetTexture(L"..\\HardwareRasterizer\\Textures\\TopBrick.bmp");
@@ -59,6 +55,9 @@ public:
 	}
 	virtual int  ApplicationUpdate() 
 	{
+
+		//character.mUpdate();
+
 		// rotate a cube
 		static float t = 0.0f;
 
@@ -71,9 +70,9 @@ public:
 		mRasterizer->DrawWorldObject((WorldObject*)&mCubeMesh, mat);
 
 		//update the locator
-		XMFLOAT3 upV = mcam.GetUpVector();
-		XMFLOAT3 rightV = mcam.GetRightVector();
-		XMFLOAT3 lookV = mcam.GetLookAtVector();
+		XMFLOAT3 upV = mCamera.GetUpVector();
+		XMFLOAT3 rightV = mCamera.GetRightVector();
+		XMFLOAT3 lookV = mCamera.GetLookAtVector();
 
 		mUp.SetSecondPoint(upV.x, upV.y, upV.z);
 		mRight.SetSecondPoint(rightV.x, rightV.y, rightV.z);
@@ -92,7 +91,7 @@ public:
 		rightMat *= viewOffset;
 		lookMat *= viewOffset;
 
-		XMMATRIX viewR = mcam.GetViewRotationMatrix();
+		XMMATRIX viewR = mCamera.GetViewRotationMatrix();
 		XMMATRIX viewRInv = XMMatrixInverse(NULL, viewR);
 
 		upMat *= viewRInv;
@@ -100,7 +99,7 @@ public:
 		lookMat *= viewRInv;
 
 
-		XMMATRIX viewT = mcam.GetViewTranslationMatrix();
+		XMMATRIX viewT = mCamera.GetViewTranslationMatrix();
 		XMMATRIX viewTInv = XMMatrixInverse(NULL, viewT);
 
 		upMat *= viewTInv;
@@ -115,22 +114,10 @@ public:
 		mRasterizer->DrawWorldObject((WorldObject*)&mLookAt, lookMat);
 
 
-		XMMATRIX topCubeMat, bottomCubeMat, backCubeMat;
-		topCubeMat = XMMatrixTranslation(0, 400.0f, -1000.0f);
-		bottomCubeMat = XMMatrixTranslation(0, -400.0f, -1000.0f);
-		backCubeMat = XMMatrixTranslation(0, 0.0f, -2000.0f);
-
-
-		mRasterizer->DrawWorldObject((WorldObject*)&topMark, topCubeMat);
-		mRasterizer->DrawWorldObject((WorldObject*)&bottomMark, bottomCubeMat);
-		mRasterizer->DrawWorldObject((WorldObject*)&backMark, backCubeMat);
-
 
 		XMMATRIX floorMat = XMMatrixIdentity();
 		mRasterizer->DrawWorldObject((WorldObject*)&mFloorMesh, floorMat);
 
-		//mRasterizer->SetViewMatrix(mCamera.View());
-		mRasterizer->SetViewMatrix(mcam.GetViewMatrix());
 
 		float moveSpeed = 0.5f;
 
@@ -140,43 +127,45 @@ public:
 		static DWORD timeDeltaRight = 2;
 
 		if (GetAsyncKeyState(0x57)) //W key
-			mcam.MoveAlongLookAt(-moveSpeed);
+			mCamera.MoveAlongLookAt(-moveSpeed);
 
 		if (GetAsyncKeyState(0x53)) //S key
-			mcam.MoveAlongLookAt(moveSpeed);
+			mCamera.MoveAlongLookAt(moveSpeed);
 
 		if (GetAsyncKeyState(0x41)) //A key
-			mcam.MoveAlongRight(-moveSpeed);
+			mCamera.MoveAlongRight(-moveSpeed);
 
 		if (GetAsyncKeyState(0x44)) //D key
-			mcam.MoveAlongRight(moveSpeed);
+			mCamera.MoveAlongRight(moveSpeed);
 
 		XMMATRIX yawMatrix, pitchMatrix;
 
 		if (GetAsyncKeyState(VK_UP) && ((timeGetTime() - timeDeltaUp) > 10))
 		{
 			timeDeltaUp = timeGetTime();
-			pitchMatrix = mcam.Pitch(-1);
+			pitchMatrix = mCamera.Pitch(-1);
 		}
 
 		if (GetAsyncKeyState(VK_DOWN) && ((timeGetTime() - timeDeltaDown) > 10))
 		{
 			timeDeltaDown = timeGetTime();
-			pitchMatrix = mcam.Pitch(1);
+			pitchMatrix = mCamera.Pitch(1);
 		}
 
 		if (GetAsyncKeyState(VK_LEFT) && ((timeGetTime() - timeDeltaLeft) > 10))
 		{
 			timeDeltaLeft = timeGetTime();
-			yawMatrix = mcam.Yaw(-1);
+			yawMatrix = mCamera.Yaw(-1);
 		}
 
 		if (GetAsyncKeyState(VK_RIGHT) && ((timeGetTime() - timeDeltaRight) > 10))
 		{
 			timeDeltaRight = timeGetTime();
-			yawMatrix = mcam.Yaw(1);
+			yawMatrix = mCamera.Yaw(1);
 		}
 
+
+		mRasterizer->SetViewMatrix(character.GetCamera().GetViewMatrix());
 
 		mDbgWindow->DisplayBitmap(mBitmap);
 
@@ -226,17 +215,16 @@ private:
 
 	std::map<int, bool> mKeyDownMap;
 
+	CharacterController character;
 	DebugWindow* mDbgWindow;
 	Camera mCamera;
 	Mesh mCubeMesh;
-	Mesh mFloorMesh;
+	Terrain mFloorMesh;
 	Line mUp;
 	Line mRight;
 	Line mLookAt;
 
 	Mesh topMark, bottomMark, backMark;
-
-	cam mcam;
 
 	SoftwareBitmap::Bitmap* mBitmap;
 

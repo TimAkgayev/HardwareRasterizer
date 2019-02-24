@@ -13,7 +13,7 @@ public:
 		mLookAt = XMVector3Cross(mUp, mRight);
 		mLookAt = XMVector3Normalize(mLookAt);
 
-		mPosition = MakeVector(2.0F, 3.0f, -1000.0f);
+		mPosition = MakeVector(2.0F, 4.0f, -500.0f);
 	}
 
 

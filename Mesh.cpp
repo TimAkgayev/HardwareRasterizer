@@ -126,6 +126,8 @@ void Mesh::CreateFloor(std::wstring pathToHeightmap, int length, int width)
 	//create the vertices
 	MeshVertex* floorMesh = new MeshVertex[bmpWidth*bmpHeight];
 	UCHAR* source_mem = (UCHAR*)heightMap.GetData();
+	float scale = 100.0f;
+	float heightScale = 20.0f;
 	for (int xdim = 0; xdim < bmpWidth; xdim++)
 	{
 		for (int zdim = 0; zdim < bmpHeight; zdim++)
@@ -134,7 +136,7 @@ void Mesh::CreateFloor(std::wstring pathToHeightmap, int length, int width)
 			float height = source_mem[xdim + zdim*heightMap.GetPitch()];
 		
 			float color = (height)/ 255.0f;
-			floorMesh[xdim + zdim*bmpWidth] = { XMFLOAT3((float)xdim, height , (float)zdim), XMFLOAT2(float(xdim)/ bmpWidth, float(zdim)/ bmpHeight) };
+			floorMesh[xdim + zdim*bmpWidth] = { XMFLOAT3((float)xdim*scale, height * heightScale , (float)zdim*scale), XMFLOAT2(float(xdim)/ bmpWidth, float(zdim)/ bmpHeight) };
 		} 
 	}
 

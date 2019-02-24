@@ -1,202 +1,164 @@
-//GCamera.cpp
 #include "Camera.h"
 
 
-
-Camera::Camera(void)
+Camera::Camera()
 {
+	mUp = MakeVector(0.0f, 1.0f, 0.0f);
+	mRight = MakeVector(1.0f, 0.0f, 0.0f);
+
+
+	mLookAt = XMVector3Cross(mUp, mRight);
+	mLookAt = XMVector3Normalize(mLookAt);
+
+	mPosition = MakeVector(2.0F, 4.0f, -500.0f);
+}
+
+
+XMVECTOR Camera::MakeVector(float x, float y, float z, float w)
+{
+	return XMLoadFloat4(&XMFLOAT4(x, y, z, w));
+}
+
+XMVECTOR Camera::MakeVector(float x, float y, float z)
+{
+	return XMLoadFloat3(&XMFLOAT3(x, y, z));
+}
+
+void Camera::Move(XMFLOAT3 dir)
+{
+	XMVECTOR tdir = XMLoadFloat3(&dir);
+	Move(tdir);
+}
+
+void Camera::Move(XMVECTOR dir)
+{
+	mPosition += dir;
+}
+
+void Camera::MoveAlongLookAt(float amount)
+{
+
+	XMVECTOR VecToMove = mLookAt * amount;
+	Move(VecToMove);
+}
+
+void Camera::MoveAlongRight(float amount)
+{
+
+	XMVECTOR VecToMove = mRight * amount;
+	Move(VecToMove);
+
+}
+
+void Camera::MoveAlongUp(float amount)
+{
+	auto VecToMove = mUp * amount;
+	Move(VecToMove);
+}
+
+
+
+XMFLOAT3 Camera::GetLookAtVector()
+{
+	XMFLOAT3 fLookAt;
+	XMStoreFloat3(&fLookAt, mLookAt);
+	return fLookAt;
+}
+
+XMFLOAT3 Camera::GetRightVector()
+{
+	XMFLOAT3 fRight;
+	XMStoreFloat3(&fRight, mRight);
+	return fRight;
+}
+
+XMFLOAT3 Camera::GetUpVector()
+{
+	XMFLOAT3 fUp;
+	XMStoreFloat3(&fUp, mUp);
+	return fUp;
+}
+
+void Camera::Roll(float degrees)
+{
+	XMVECTOR rotQuaternion = XMQuaternionRotationAxis(mLookAt, degrees * XM_PI / 180);
+
+	XMVector3Rotate(mUp, rotQuaternion);
+	XMVector3Rotate(mRight, rotQuaternion);
+
+	mUp = XMVector3Normalize(mUp);
+	mRight = XMVector3Normalize(mRight);
+
+}
+
+XMMATRIX Camera::Pitch(float degrees)
+{
+
+	XMVECTOR rotQuaternion = XMQuaternionRotationAxis(mRight, degrees * XM_PI / 180);
+	mUp = XMVector3Rotate(mUp, rotQuaternion);
+	mUp = XMVector3Normalize(mUp);
+
+	mLookAt = XMVector3Cross(mUp, mRight);
+	mLookAt = XMVector3Normalize(mLookAt);
+
+	return XMMatrixRotationQuaternion(rotQuaternion);
+
+
+}
+
+XMMATRIX Camera::Yaw(float degrees)
+{
+	XMVECTOR globalUp = { 0.0f, 1.0f, 0.0f, 0.0f };
+	XMVECTOR rotQuaternion = XMQuaternionRotationAxis(globalUp, degrees * XM_PI / 180);
 	
+	mRight = XMVector3Rotate(mRight, rotQuaternion);
+	mRight = XMVector3Normalize(mRight);
 
-	mPosition = XMFLOAT3(0.0f, -1.0f, -5.0f);
-	mTarget = XMFLOAT3(0.0f, 1.0f, 0.0f);
-	mUp = _ConvertVectorToFloat(_ConvertFloatToVector(mPosition) + _ConvertFloatToVector(XMFLOAT3(0, 1, 0)));
-	this->initViewMatrix();
+	mUp = XMVector3Rotate(mUp, rotQuaternion);
+	mUp = XMVector3Normalize(mUp);
 
-	mAngle = 0.0f;
-	mClientWidth = 0.0f;
-	mClientHeight = 0.0f;
-	mNearest = 0.0f;
-	mFarthest = 0.0f;
+	mLookAt = XMVector3Cross(mUp, mRight);
+	mLookAt = XMVector3Normalize(mLookAt);
 
-	//XMStoreFloat4x4(&mView, XMMatrixIdentity());
-	XMStoreFloat4x4(&mProj, XMMatrixIdentity());
-	XMStoreFloat4x4(&mOrtho, XMMatrixIdentity());
-}
+	return XMMatrixRotationQuaternion(rotQuaternion);
 
-Camera::Camera(const Camera& camera)
-{
-	*this = camera;
-}
-
-Camera& Camera::operator=(const Camera& camera)
-{
-	mPosition = camera.mPosition;
-	mTarget = camera.mTarget;
-	mUp = camera.mUp;
-
-	mAngle = camera.mAngle;
-	mClientWidth = camera.mClientWidth;
-	mClientHeight = camera.mClientHeight;
-	mNearest = camera.mNearest;
-	mFarthest = camera.mFarthest;
-
-	mView = camera.mView;
-	mProj = camera.mProj;
-	mOrtho = camera.mOrtho;
-	return *this;
-}
-
-void Camera::CheckUserInput()
-{
-	if(GetAsyncKeyState(0x57)) //W key
-		Move(XMFLOAT3(0.0f, 0.0f, 1.0f));
-
-	if (GetAsyncKeyState(0x53)) //S key
-		Move(XMFLOAT3(0.0f, 0.0f, -1.0f));
-
-	if (GetAsyncKeyState(0x41)) //A key
-		Move(XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	
-	if (GetAsyncKeyState(0x44)) //D key
-		Move(XMFLOAT3(1.0f, 0.0f, 0.0f));
-	
-}
-
-void Camera::initViewMatrix()
-{
-	XMStoreFloat4x4(&mView, XMMatrixLookAtLH(XMLoadFloat3(&mPosition), XMLoadFloat3(&mTarget),
-		XMLoadFloat3(&this->Up())));
 }
 
 
-
-void Camera::InitProjMatrix(const float angle, const float client_width, const float client_height,
-	const float near_plane, const float far_plane)
+XMMATRIX Camera::GetViewTranslationMatrix()
 {
-	mAngle = angle;
-	mClientWidth = client_width;
-	mClientHeight = client_height;
-	mNearest = near_plane;
-	mFarthest = far_plane;
-	XMStoreFloat4x4(&mProj, XMMatrixPerspectiveFovLH(angle, client_width / client_height,
-		near_plane, far_plane));
+	XMVECTOR row = MakeVector(1.0f, 0.0f, 0.0f, 0.0f);
+
+
+	XMMATRIX matTranslate = XMMatrixIdentity();
+	XMFLOAT3 camPos;
+	XMStoreFloat3(&camPos, mPosition);
+	row = MakeVector(-camPos.x, -camPos.y, -camPos.z, 1.0f);
+	matTranslate.r[3] = row;
+
+	return matTranslate;
 }
 
-void Camera::Move(XMFLOAT3 direction)
+XMMATRIX Camera::Camera::GetViewRotationMatrix()
 {
-	mPosition = _ConvertVectorToFloat(XMVector3Transform(_ConvertFloatToVector(mPosition),
-		XMMatrixTranslation(direction.x, direction.y, direction.z)));
-	mTarget = _ConvertVectorToFloat(XMVector3Transform(_ConvertFloatToVector(mTarget),
-		XMMatrixTranslation(direction.x, direction.y, direction.z)));
-	mUp = _ConvertVectorToFloat(XMVector3Transform(_ConvertFloatToVector(mUp),
-		XMMatrixTranslation(direction.x, direction.y, direction.z)));
-
-	this->initViewMatrix();
+	XMVECTOR row4 = MakeVector(0.0f, 0.0f, 0.0f, 1.0f);
+	XMMATRIX rotationMatrix = XMMatrixLookAtRH(mPosition, mLookAt + mPosition, mUp);
+	rotationMatrix.r[3] = row4;
+	return rotationMatrix;
 }
 
-void Camera::Rotate(XMFLOAT3 axis, float degrees)
+XMMATRIX Camera::GetViewMatrix()
 {
-	if (XMVector3Equal(_ConvertFloatToVector(axis), XMVectorZero()) ||
-		degrees == 0.0f)
-		return;
 
-	// rotate vectors
-	XMFLOAT3 look_at_target = _ConvertVectorToFloat(_ConvertFloatToVector(mTarget) - _ConvertFloatToVector(mPosition));
-	XMFLOAT3 look_at_up = _ConvertVectorToFloat(_ConvertFloatToVector(mUp) - _ConvertFloatToVector(mPosition));
-	look_at_target = _ConvertVectorToFloat(XMVector3Transform(_ConvertFloatToVector(look_at_target),
-		XMMatrixRotationAxis(_ConvertFloatToVector(axis), XMConvertToRadians(degrees))));
-	look_at_up = _ConvertVectorToFloat(XMVector3Transform(_ConvertFloatToVector(look_at_up),
-		XMMatrixRotationAxis(_ConvertFloatToVector(axis), XMConvertToRadians(degrees))));
-
-	// restore vectors's end points mTarget and mUp from new rotated vectors
-	mTarget = _ConvertVectorToFloat(_ConvertFloatToVector(mPosition) + _ConvertFloatToVector(look_at_target));
-	mUp = _ConvertVectorToFloat(_ConvertFloatToVector(mPosition) + _ConvertFloatToVector(look_at_up));
-
-	this->initViewMatrix();
+	return XMMatrixLookAtRH(mPosition, mLookAt + mPosition, mUp);
 }
 
-void Camera::Target(XMFLOAT3 new_target)
+void Camera::SetPosition(XMVECTOR & position)
 {
-	if (XMVector3Equal(_ConvertFloatToVector(new_target), _ConvertFloatToVector(mPosition)) ||
-		XMVector3Equal(_ConvertFloatToVector(new_target), _ConvertFloatToVector(mTarget)))
-		return;
-
-	XMFLOAT3 old_look_at_target = _ConvertVectorToFloat(_ConvertFloatToVector(mTarget) - _ConvertFloatToVector(mPosition));
-	XMFLOAT3 new_look_at_target = _ConvertVectorToFloat(_ConvertFloatToVector(new_target) - _ConvertFloatToVector(mPosition));
-	float angle = XMConvertToDegrees(XMVectorGetX(
-		XMVector3AngleBetweenNormals(XMVector3Normalize(_ConvertFloatToVector(old_look_at_target)),
-			XMVector3Normalize(_ConvertFloatToVector(new_look_at_target)))));
-	if (angle != 0.0f && angle != 360.0f && angle != 180.0f)
-	{
-		XMVECTOR axis = XMVector3Cross(_ConvertFloatToVector(old_look_at_target), _ConvertFloatToVector(new_look_at_target));
-		Rotate(_ConvertVectorToFloat(axis), angle);
-	}
-	mTarget = new_target;
-	this->initViewMatrix();
+	mPosition = position;
 }
 
-// Set camera position
-void Camera::Position(XMFLOAT3& new_position)
+XMVECTOR & Camera::GetPosition()
 {
-	XMFLOAT3 move_vector = _ConvertVectorToFloat(_ConvertFloatToVector(new_position) - _ConvertFloatToVector(mPosition));
-	XMFLOAT3 target = mTarget;
-	this->Move(move_vector);
-	this->Target(target);
-}
-
-void Camera::Angle(float angle)
-{
-	mAngle = angle;
-	InitProjMatrix(mAngle, mClientWidth, mClientHeight, mNearest, mFarthest);
-}
-
-void Camera::NearestPlane(float nearest)
-{
-	mNearest = nearest;
-	OnResize(mClientWidth, mClientHeight);
-}
-
-void Camera::FarthestPlane(float farthest)
-{
-	mFarthest = farthest;
-	OnResize(mClientWidth, mClientHeight);
-}
-
-void Camera::InitOrthoMatrix(const float clientWidth, const float clientHeight,
-	const float nearZ, const float fartherZ)
-{
-	XMStoreFloat4x4(&mOrtho, XMMatrixOrthographicLH(clientWidth, clientHeight, 0.0f, fartherZ));
-}
-
-void Camera::OnResize(uint32_t new_width, uint32_t new_height)
-{
-	mClientWidth = new_width;
-	mClientHeight = new_height;
-	InitProjMatrix(mAngle, static_cast<float>(new_width), static_cast<float>(new_height), mNearest, mFarthest);
-	InitOrthoMatrix(static_cast<float>(new_width), static_cast<float>(new_height), 0.0f, mFarthest);
-}
-
-
-inline XMVECTOR Camera::_ConvertFloatToVector(XMFLOAT3& val)
-{
-	return XMLoadFloat3(&val);
-}
-
-inline XMFLOAT3 Camera::_ConvertVectorToFloat(XMVECTOR& vec)
-{
-	XMFLOAT3 val;
-	XMStoreFloat3(&val, vec);
-	return val;
-}
-
-inline XMFLOAT4X4 Camera::_ConvertMatrixToFloat(XMMATRIX& matrix)
-{
-	XMFLOAT4X4 val;
-	XMStoreFloat4x4(&val, matrix);
-	return val;
-}
-
-XMMATRIX Camera:: _ConvertFloatToMatrix(XMFLOAT4X4& val)
-{
-	return XMLoadFloat4x4(&val);
+	return mPosition;
 }

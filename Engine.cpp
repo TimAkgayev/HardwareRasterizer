@@ -29,8 +29,14 @@ int Engine::Loop()
 	// Clear the back buffer 
 	float clearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; // red,green,blue,alpha
 	mD3D10Device->ClearRenderTargetView(mD3D10RenderTargetView, clearColor);
+	mD3D10Device->ClearDepthStencilView(mD3D10DepthStencilView, D3D10_CLEAR_DEPTH, 1, 1);
+
 
 	//Game update
+
+	PositionLink::_PositionLink_UpdateAllLinks();
+	AutoUpdate::_AutoUpdate_UpdateAll();
+
 	if (mApplicationInstance->ApplicationUpdate() == UPDATE_RESET)
 	{
 		
@@ -65,6 +71,11 @@ int Engine::Loop()
 			meshDesc.MeshObjectPtr = obj;
 
 			Mesh* mesh = (Mesh*)obj;
+
+			//make sure the mesh is not empty
+			if (mesh->GetVertexList().size() == 0)
+				break;
+
 
 			//create a vertex buffer
 			D3D10_BUFFER_DESC bufferDesc;
@@ -337,8 +348,35 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 	//release the back buffer
 	pBackBuffer->Release();
 
-	//set the render target
-	mD3D10Device->OMSetRenderTargets(1, &mD3D10RenderTargetView, NULL);
+
+	//create depth stencil texture
+	D3D10_TEXTURE2D_DESC descDepth;
+
+	descDepth.Width = mApplicationInstance->GetClientWidth();
+	descDepth.Height = mApplicationInstance->GetClientHeight();
+	descDepth.MipLevels = 1;
+	descDepth.ArraySize = 1;
+	descDepth.Format = DXGI_FORMAT_D32_FLOAT;
+	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Quality = 0;
+	descDepth.Usage = D3D10_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D10_BIND_DEPTH_STENCIL;
+	descDepth.CPUAccessFlags = 0;
+	descDepth.MiscFlags = 0;
+
+	if (FAILED(mD3D10Device->CreateTexture2D(&descDepth, NULL, &mD3D10DepthStencilTexture))) return;
+
+	// Create the depth stencil view
+	D3D10_DEPTH_STENCIL_VIEW_DESC descDSV;
+	descDSV.Format = descDepth.Format;
+	descDSV.ViewDimension = D3D10_DSV_DIMENSION_TEXTURE2D;
+	descDSV.Texture2D.MipSlice = 0;
+
+	if (FAILED(mD3D10Device->CreateDepthStencilView(mD3D10DepthStencilTexture, &descDSV, &mD3D10DepthStencilView))) return;
+
+	//set render targets
+	mD3D10Device->OMSetRenderTargets(1, &mD3D10RenderTargetView, mD3D10DepthStencilView);
+
 
 	//set view port aka region of render target ===================================================
 	mD3D10Viewport.Width = swapChainDesc.BufferDesc.Width;

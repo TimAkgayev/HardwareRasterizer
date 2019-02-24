@@ -1,4 +1,4 @@
-#include "ApplicationInterface.h"
+#include "Interface_Application.h"
 
 wchar_t* Application::GetWindowTitle()
 {

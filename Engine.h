@@ -1,5 +1,5 @@
 #pragma once
-#include "ApplicationInterface.h"
+#include "Interface_Application.h"
 #include <d3d10.h>
 #include "D3DX\D3DX10.h"
 #include <DirectXMath.h>
@@ -8,6 +8,7 @@
 #include "WorldObject.h"
 #include "Mesh.h"
 #include "RasterizerInterface.h"
+#include "Interface_AutoUpdate.h"
 
 
 #define NUM_MESH_VERTEX_ELEMENTS 2
@@ -64,6 +65,8 @@ protected:
 	HWND mMainWindowHandle;
 
 	ID3D10Device*		 mD3D10Device;
+	ID3D10Texture2D* mD3D10DepthStencilTexture;
+	ID3D10DepthStencilView* mD3D10DepthStencilView;
 	IDXGISwapChain*		 mD3D10SwapChain;
 	ID3D10VertexShader*  mMeshVertexShader;
 	ID3D10PixelShader*   mMeshPixelShader;
