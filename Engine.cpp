@@ -15,6 +15,7 @@ D3D10_INPUT_ELEMENT_DESC LineVertexLayout[] =
 };
 
 
+
 struct ShaderProjectionVars
 {
 	XMMATRIX mWorld;
@@ -436,7 +437,7 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 		return;
 	}
 
-	//create the mesh vertex shader
+	//create the line vertex shader
 	hr = mD3D10Device->CreateVertexShader(pLineVSBlob->GetBufferPointer(), pLineVSBlob->GetBufferSize(), &mLineVertexShader);
 	if (FAILED(hr))
 	{
@@ -444,7 +445,7 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 		return;
 	}
 
-	// compile the mesh pixel shader
+	// compile the line pixel shader
 	ID3D10Blob* pLinePSBlob = NULL;
 	hr = CompileShaderFromFile(L"DX10HardwareRendererEffect.fx", "PS_MAIN_LINE", "ps_4_0", &pLinePSBlob);
 	if (FAILED(hr))
@@ -453,7 +454,7 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 		return;
 	}
 
-	// create the mesh pixel shader
+	// create the line pixel shader
 	hr = mD3D10Device->CreatePixelShader(pLinePSBlob->GetBufferPointer(), pLinePSBlob->GetBufferSize(), &mLinePixelShader);
 	pLinePSBlob->Release();
 	if (FAILED(hr))
@@ -537,6 +538,44 @@ void Engine::CreateEngineWindow(const wchar_t* WindowClassName, HINSTANCE hInsta
 	mD3D10Device->OMSetBlendState(mD3D10BlendState, 0, 0xffffffff);
 
 
+	//compile the skybox vertex shader
+	ID3DBlob* pSkyBoxVSBlob = NULL;
+	hr = CompileShaderFromFile(TEXT("SkyCubeMap.fx"), "VS_MAIN", "vs_4_0", &pSkyBoxVSBlob);
+	if (FAILED(hr))
+	{
+		MessageBox(NULL, L"The FX file cannot be compiled", L"Error", MB_OK);
+		return;
+	}
+
+	//create the skybox vertex shader
+	hr = mD3D10Device->CreateVertexShader(pSkyBoxVSBlob->GetBufferPointer(), pSkyBoxVSBlob->GetBufferSize(), &mSkyBoxVertexShader);
+	pSkyBoxVSBlob->Release();
+	if (FAILED(hr))
+		return;
+
+
+	// compile the skybox pixel shader
+	ID3DBlob* pSkyBoxPSBlob = NULL;
+	hr = CompileShaderFromFile(L"SkyCubeMap.fx", "PS_MAIN", "ps_4_0", &pSkyBoxPSBlob);
+	if (FAILED(hr))
+	{
+		MessageBox(NULL, L"The FX file cannot be compiled.", L"Error", MB_OK);
+		return;
+	}
+
+	// create the skybox pixel shader
+	hr = mD3D10Device->CreatePixelShader(pSkyBoxPSBlob->GetBufferPointer(), pSkyBoxPSBlob->GetBufferSize(), &mSkyBoxPixelShader);
+	pSkyBoxPSBlob->Release();
+	if (FAILED(hr))
+		return;
+
+	//create a skybox ============================================================================
+	D3DX10CreateShaderResourceViewFromFile(mD3D10Device, L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Pojects\\HardwareRasterizer\\HardwareRasterizer\\Textures\\SkyCubeMap.dds", 0, 0, &mSkyCubeMapSRV, 0);
+
+	
+	
+	
+
 	//initialize application
 	mApplicationInstance->ApplicationInitialization(mMainWindowHandle, hInstance);
 	mApplicationInstance->SetRasterizer((RasterizerInterface*)this);
@@ -548,6 +587,44 @@ void Engine::SetViewMatrix(const XMMATRIX & view)
 {
 	mNewViewMatrix = view;
 }
+
+
+void Engine::DrawWorldObject(WorldObject * obj)
+{
+	if (obj->ObjectType == MESH_OBJECT)
+	{
+		UINT count = 0;
+		for (MeshDescriptor desc : mLoadedMeshes)
+		{
+			if (desc.MeshObjectPtr == obj) //find the object that was loaded
+			{
+				mLoadedMeshes[count].WorldMatrix = obj->GetTransform();
+				mMeshDrawList.push_back(count);
+				break;
+			}
+
+			count++;
+		}
+	}
+	else if (obj->ObjectType == LINE_OBJECT)
+	{
+		UINT count = 0;
+		for (LineDescriptor desc : mLoadedLines)
+		{
+			if (desc.LineObjectPtr == obj) //find the object that was loaded
+			{
+				mLoadedLines[count].WorldMatrix = obj->GetTransform();
+				mLineDrawList.push_back(count);
+				break;
+			}
+
+			count++;
+		}
+
+	}
+}
+
+
 
 void Engine::DrawWorldObject(WorldObject * obj, XMMATRIX& worldMatrix)
 {

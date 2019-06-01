@@ -1,7 +1,15 @@
 
 
 Texture2D txDiffuse : register(t0);
-SamplerState linearSampler : register(s0);
+TextureCube skyCubeMap : register(t1);
+
+SamplerState triLinearSampler
+{
+	Filter = MIN_MAG_MIP_LINEAR;
+	AddressU = Wrap;
+	AddressV = Wrap;
+};
+
 
 cbuffer ProjectionMatrices : register (b0)
 {
@@ -10,24 +18,30 @@ cbuffer ProjectionMatrices : register (b0)
 	matrix Projection;
 }
 
-struct PS_INPUT_MESH
+struct PS_INPUT_POS_TEX
 {
 	float4 Pos : SV_POSITION;
 	float2 UV : TEXCOORD0;
 
 };
 
-struct PS_INPUT_LINE
+struct PS_INPUT_SKYBOX
+{
+	float4 Pos : SV_POSITION;
+	float3 UV : TEXCOORD;
+};
+
+struct PS_INPUT_POS_COLOR
 {
 	float4 Pos : SV_POSITION;
 	float4 Color : COLOR0;
 };
 
 
-PS_INPUT_MESH VS_MAIN_MESH(float4 Pos : POSITION, float2 UV : TEXCOORD0)
+PS_INPUT_POS_TEX VS_SIMPLEPROJECTION(float4 Pos : POSITION, float2 UV : TEXCOORD0)
 {
 
-	PS_INPUT_MESH psInput = (PS_INPUT_MESH)0;
+	PS_INPUT_POS_TEX psInput = (PS_INPUT_POS_TEX)0;
 
 	psInput.Pos = mul(Pos, World);
 	psInput.Pos = mul(psInput.Pos, View);
@@ -39,14 +53,14 @@ PS_INPUT_MESH VS_MAIN_MESH(float4 Pos : POSITION, float2 UV : TEXCOORD0)
 }
 
 
-float4 PS_MAIN_MESH(PS_INPUT_MESH psInput) : SV_Target
+float4 PS_SIMPLETEXTURE(PS_INPUT_POS_TEX psInput) : SV_Target
 {
-	return txDiffuse.Sample(linearSampler, psInput.UV);
+	return txDiffuse.Sample(triLinearSampler, psInput.UV);
 }
 
-PS_INPUT_LINE VS_MAIN_LINE(float4 Pos: POSITION, float4 Color : COLOR)
+PS_INPUT_POS_COLOR VS_SIMPLEPROJECTIONCOLOR (float4 Pos: POSITION, float4 Color : COLOR)
 {
-	PS_INPUT_LINE psInput = (PS_INPUT_LINE)0;
+	PS_INPUT_POS_COLOR psInput = (PS_INPUT_POS_COLOR)0;
 	psInput.Pos = mul(Pos, World);
 	psInput.Pos = mul(psInput.Pos, View);
 	psInput.Pos = mul(psInput.Pos, Projection);
@@ -56,7 +70,29 @@ PS_INPUT_LINE VS_MAIN_LINE(float4 Pos: POSITION, float4 Color : COLOR)
 }
 
 
-float4 PS_MAIN_LINE(PS_INPUT_LINE psInput) : SV_Target
+float4 PS_SIMPLECOLOR(PS_INPUT_POS_COLOR psInput) : SV_Target
 {
 	return psInput.Color;
+}
+
+
+PS_INPUT_SKYBOX VS_SKYBOX(float3 Pos: POSITION)
+{
+	PS_INPUT_SKYBOX vsout = (PS_INPUT_SKYBOX)0;
+	
+
+	vsout.Pos = mul(float4(Pos,1.0f), World);
+	vsout.Pos = mul(vsout.Pos, View);
+	vsout.Pos = mul(vsout.Pos, Projection);
+	vsout.UV = Pos;
+
+	return vsout;
+
+}
+
+float4 PS_SKYBOX(PS_INPUT_SKYBOX psin) : SV_Target
+{
+	//return float4(255, 0, 0, 255);
+
+	return skyCubeMap.Sample(triLinearSampler, psin.UV);
 }

@@ -1,16 +1,12 @@
 #pragma once
-#include <DirectXMath.h>
+#include "d3dcommon.h"
 #include "Interface_LinkSystem.h"
 using namespace DirectX;
 
-class Camera : public PositionLink
+class Camera
 {
 public:
 	Camera();
-
-	XMVECTOR MakeVector(float x, float y, float z, float w);
-	XMVECTOR MakeVector(float x, float y, float z);
-
 
 	void Move(XMFLOAT3 dir);
 	void Move(XMVECTOR dir);
@@ -20,22 +16,22 @@ public:
 	void MoveAlongUp(float amount);
 	
 
-	XMFLOAT3 GetLookAtVector();
-	XMFLOAT3 GetRightVector();
-	XMFLOAT3 GetUpVector();
+	XMFLOAT3 GetLookAtVector() const;
+	XMFLOAT3 GetRightVector() const;
+	XMFLOAT3 GetUpVector() const;
 
+	XMMATRIX GetViewTranslationMatrix() const;
+	XMMATRIX GetViewRotationMatrix() const;
+	XMMATRIX GetViewMatrix() const;
+	XMMATRIX GetProjectionMatrix() const;
 
 	void Roll(float degrees);
 	XMMATRIX Pitch(float degrees);
 	XMMATRIX Yaw(float degrees);
 
 
-	XMMATRIX GetViewTranslationMatrix();
-	XMMATRIX GetViewRotationMatrix();
-	XMMATRIX GetViewMatrix();
-
-	virtual void SetPosition(XMVECTOR& position) override;
-	virtual XMVECTOR& GetPosition() override;
+	virtual void SetPosition(XMFLOAT3& position);
+	virtual XMFLOAT3 GetPosition() const;
 	
 
 protected:
@@ -44,4 +40,6 @@ protected:
 	XMVECTOR mLookAt;
 
 	XMVECTOR mPosition;
+
+	XMMATRIX mProjectionMatrix;
 };

@@ -3,26 +3,24 @@
 
 Camera::Camera()
 {
-	mUp = MakeVector(0.0f, 1.0f, 0.0f);
-	mRight = MakeVector(1.0f, 0.0f, 0.0f);
+	XMFLOAT3 upF, rightF;
+	upF = { 0.0f, 1.0f, 0.0f };
+	rightF = { 1.0f, 0.0f, 0.0f };
+
+	mUp = XMLoadFloat3(&upF);
+	mRight = XMLoadFloat3(&rightF);
 
 
 	mLookAt = XMVector3Cross(mUp, mRight);
 	mLookAt = XMVector3Normalize(mLookAt);
 
-	mPosition = MakeVector(2.0F, 4.0f, -500.0f);
+	XMFLOAT3 posF = { 0.0F, 300.0f, 0.0f };
+	mPosition = XMLoadFloat3(&posF);
+
+	mProjectionMatrix = XMMatrixPerspectiveFovLH(D3DX_PI / 4, 4.0f/3.0f, 0.01f, 100000.0f);
+
 }
 
-
-XMVECTOR Camera::MakeVector(float x, float y, float z, float w)
-{
-	return XMLoadFloat4(&XMFLOAT4(x, y, z, w));
-}
-
-XMVECTOR Camera::MakeVector(float x, float y, float z)
-{
-	return XMLoadFloat3(&XMFLOAT3(x, y, z));
-}
 
 void Camera::Move(XMFLOAT3 dir)
 {
@@ -58,21 +56,21 @@ void Camera::MoveAlongUp(float amount)
 
 
 
-XMFLOAT3 Camera::GetLookAtVector()
+XMFLOAT3 Camera::GetLookAtVector() const
 {
 	XMFLOAT3 fLookAt;
 	XMStoreFloat3(&fLookAt, mLookAt);
 	return fLookAt;
 }
 
-XMFLOAT3 Camera::GetRightVector()
+XMFLOAT3 Camera::GetRightVector() const
 {
 	XMFLOAT3 fRight;
 	XMStoreFloat3(&fRight, mRight);
 	return fRight;
 }
 
-XMFLOAT3 Camera::GetUpVector()
+XMFLOAT3 Camera::GetUpVector() const
 {
 	XMFLOAT3 fUp;
 	XMStoreFloat3(&fUp, mUp);
@@ -125,40 +123,52 @@ XMMATRIX Camera::Yaw(float degrees)
 }
 
 
-XMMATRIX Camera::GetViewTranslationMatrix()
+XMMATRIX Camera::GetViewTranslationMatrix() const
 {
-	XMVECTOR row = MakeVector(1.0f, 0.0f, 0.0f, 0.0f);
+	XMFLOAT4 rowF = { 1.0f, 0.0f, 0.0f, 0.0f };
+	XMVECTOR row = XMLoadFloat4(&rowF);
 
 
 	XMMATRIX matTranslate = XMMatrixIdentity();
 	XMFLOAT3 camPos;
 	XMStoreFloat3(&camPos, mPosition);
-	row = MakeVector(-camPos.x, -camPos.y, -camPos.z, 1.0f);
+
+	rowF = { -camPos.x, -camPos.y, -camPos.z, 1.0f };
+	row = XMLoadFloat4(&rowF);
 	matTranslate.r[3] = row;
 
 	return matTranslate;
 }
 
-XMMATRIX Camera::Camera::GetViewRotationMatrix()
+XMMATRIX Camera::Camera::GetViewRotationMatrix() const
 {
-	XMVECTOR row4 = MakeVector(0.0f, 0.0f, 0.0f, 1.0f);
+	XMFLOAT4 row4F = { 0.0f, 0.0f, 0.0f, 1.0f };
+	XMVECTOR row4 = XMLoadFloat4(&row4F);
 	XMMATRIX rotationMatrix = XMMatrixLookAtRH(mPosition, mLookAt + mPosition, mUp);
 	rotationMatrix.r[3] = row4;
 	return rotationMatrix;
 }
 
-XMMATRIX Camera::GetViewMatrix()
+XMMATRIX Camera::GetViewMatrix() const
 {
 
 	return XMMatrixLookAtRH(mPosition, mLookAt + mPosition, mUp);
 }
 
-void Camera::SetPosition(XMVECTOR & position)
+XMMATRIX Camera::GetProjectionMatrix() const
 {
-	mPosition = position;
+	return mProjectionMatrix;
 }
 
-XMVECTOR & Camera::GetPosition()
+void Camera::SetPosition(XMFLOAT3 & position)
 {
-	return mPosition;
+	
+	mPosition = XMLoadFloat3(&position);
+}
+
+XMFLOAT3 Camera::GetPosition() const
+{
+	XMFLOAT3 outF;
+	XMStoreFloat3(&outF, mPosition);
+	return outF;
 }
