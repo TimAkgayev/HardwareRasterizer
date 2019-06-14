@@ -18,7 +18,7 @@ CharacterController::CharacterController(Terrain* terrain)
 
 	if (lowerLeft.x > 0 || upperRight.x > 0)
 	{
-		playerPosX = (rand() % int( abs(lowerLeft.x) - 1 + abs(upperRight.x) - 1 + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
+		playerPosX = (rand() % int(abs(lowerLeft.x) - 1 + abs(upperRight.x) - 1 + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
 		playerPosZ = (rand() % int(abs(lowerLeft.y) - 1 + abs(upperRight.y) - 1 + 0.5f)) - int(abs(lowerLeft.y)  - 1 + 0.5f);
 	}
 	else if (lowerLeft.x < 0 && upperRight.x < 0)
@@ -86,6 +86,9 @@ void CharacterController::Move(XMVECTOR direction)
 
 	XMStoreFloat3(&camPosFinalF, camPosFinalV);
 	XMStoreFloat3(&boxPosFinalF, boxPosFinalV);
+
+	if (camPosFinalF.y < 400)
+		int x = 0;
 
 	mCam.SetPosition(camPosFinalF);
 	mCollisionBox.SetPosition(boxPosFinalF);

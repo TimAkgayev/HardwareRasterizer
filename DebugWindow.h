@@ -1,7 +1,6 @@
 #pragma once
-#include "Bitmap.h"
 #include <Windows.h>
-#include "C:\\Users\Tim\Documents\Visual Studio Projects\SoftwareRasterizer\SoftwareRasterizer\SRasterizer.h"
+
 
 
 
@@ -17,7 +16,7 @@ public:
 
 protected:
 	HWND mWindowHandle;
-	SoftwareRasterizer::SRasterizer* softwareRasterizer;
+//	SoftwareRasterizer::SRasterizer* softwareRasterizer;
 };
 
 LRESULT CALLBACK DebugWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);

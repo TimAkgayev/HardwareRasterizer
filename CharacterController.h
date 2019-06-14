@@ -6,7 +6,7 @@
 
 using namespace DirectX;
 
-class CharacterController
+__declspec(align(16)) class CharacterController
 {
 public:
 	CharacterController(Terrain* terrain);

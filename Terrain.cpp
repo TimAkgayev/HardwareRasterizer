@@ -1,6 +1,11 @@
 #include "Terrain.h"
-
-
+#include <WICTextureLoader.h>
+#include "ConstantBuffers.h"
+#include "Vertex.h"
+#include "InputLayouts.h"
+#include "Shaders.h"
+#include "ConstantBuffers.h"
+#include <limits>
 
 Terrain::Terrain()
 {
@@ -25,24 +30,47 @@ Terrain::~Terrain()
 
 void Terrain::draw()
 {
-	UINT stride = sizeof(Vertex::PosTex);
+	UINT stride = sizeof(Vertex::PosNormTex);
 	UINT offset = 0;
 
-	md3dDevice->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	md3dDevice->VSSetShader(Shaders::VS_SimpleProjection);
-	md3dDevice->PSSetShader(Shaders::PS_SimpleTexture);
-	md3dDevice->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewWorldProjBuffer);
-	md3dDevice->PSSetConstantBuffers(0, 1, &ConstantBuffers::ViewWorldProjBuffer);
-	md3dDevice->PSSetShaderResources(0, 1, &mTextureResourceView);
-	md3dDevice->IASetInputLayout(InputLayout::PosTex);
-	md3dDevice->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
-	md3dDevice->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
-	md3dDevice->DrawIndexed(mNumIndices, 0, 0);
+	ConstantBuffers::WorldMatrices worldBuffer;
+	worldBuffer.World = XMMatrixIdentity();
+	mDeviceContext->UpdateSubresource(ConstantBuffers::WorldMatrixBuffer, 0, NULL, &worldBuffer, 0, 0);
+
+	ConstantBuffers::DirectionalLight dirLight;
+	XMVECTOR ldir = { -0.577f, 0.577f, -0.577f }; 
+	ldir = XMVector3Normalize(ldir);
+	XMStoreFloat3(&dirLight.LightDirection, ldir);
+
+	dirLight.LightColor = { 1.0f, 0.0f, 0.0f, 1.0f };
+
+	mDeviceContext->UpdateSubresource(ConstantBuffers::DirectionalLightBuffer, 0, NULL, &dirLight, 0, 0);
+
+	
+	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mDeviceContext->VSSetShader(Shaders::VS_DirectionalLight, NULL, 0);
+	mDeviceContext->PSSetShader(Shaders::PS_DirectionalLight, NULL, 0);
+	mDeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
+	mDeviceContext->PSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
+	mDeviceContext->VSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
+	mDeviceContext->PSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
+	mDeviceContext->VSSetConstantBuffers(2, 1, &ConstantBuffers::DirectionalLightBuffer);
+	mDeviceContext->PSSetConstantBuffers(2, 1, &ConstantBuffers::DirectionalLightBuffer);
+	mDeviceContext->PSSetShaderResources(0, 1, &mTextureResourceView);
+	mDeviceContext->IASetInputLayout(InputLayout::PosNormTex);
+	mDeviceContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
+	mDeviceContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
+	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
 
 	mDebugLBound.draw();
 	mDebugRBound.draw();
 	mDebugUpperBound.draw();
 	mDebugLowBound.draw();
+
+	mDebugSmallLBound.draw();
+	mDebugSmallRBound.draw();
+	mDebugSmallUpperBound.draw();
+	mDebugSmallLowBound.draw();
 
 }
 
@@ -50,10 +78,10 @@ void GetCorrectHeightAtPoint(float x, float y, float** height)
 {
 }
 
-void Terrain::CreateFromHeightMap(ID3D10Device* device, std::wstring pathToHeightmap, float floorScale, float heightScale)
+void Terrain::CreateFromHeightMap(ID3D11Device* device, std::wstring pathToHeightmap, float floorScale, float heightScale)
 {
-
-	md3dDevice = device;
+	mD3DDevice = device;
+	mD3DDevice->GetImmediateContext(&mDeviceContext);
 
 	mHeightMap = new SoftwareBitmap::Bitmap(pathToHeightmap);
 	int bmpHeight = mHeightMap->GetHeight();
@@ -63,46 +91,58 @@ void Terrain::CreateFromHeightMap(ID3D10Device* device, std::wstring pathToHeigh
 	mHeightScale = heightScale;
 
 	//create the vertices
-	Vertex::PosTex* floorMesh = new Vertex::PosTex[bmpWidth*bmpHeight];
+	int numVertices = bmpWidth*bmpHeight;
+	Vertex::PosNormTex* floorMesh = new Vertex::PosNormTex[numVertices];
 	UCHAR* source_mem = (UCHAR*)mHeightMap->GetData();
 
 	//position the terrain so it's in the middle of the level
 	float dimx_center = bmpWidth * floorScale / 2.0f;
 	float dimy_center = bmpHeight * floorScale / 2.0f;
 
-	//save bounds
-	mUpperRightBound = { dimx_center, dimy_center };
-	mLowerLeftBound = { -dimx_center, -dimy_center };
+	
 
+	//create a grid
 	for (int zdim = 0; zdim < bmpHeight; zdim++)
 	{
 		for (int xdim = 0; xdim < bmpWidth; xdim++)
 		{
 			float height = source_mem[xdim + zdim*mHeightMap->GetPitch()];
-			floorMesh[xdim + zdim*bmpWidth] = { XMFLOAT3((float)xdim*floorScale - dimx_center, height * heightScale , (float)zdim*floorScale - dimy_center), XMFLOAT2(float(zdim) / bmpHeight,float(xdim) / bmpWidth) };
+			floorMesh[xdim + zdim*bmpWidth] = { XMFLOAT3((float)xdim*floorScale - dimx_center, height * heightScale , (float)zdim*floorScale - dimy_center), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT2(float(zdim) / bmpHeight,float(xdim) / bmpWidth) };
 		}
 	}
 
+	//get the true bounds
+	float smallestX = -std::numeric_limits<float>::lowest();
+	float largestX = std::numeric_limits<float>::lowest();
+	float smallestZ = -std::numeric_limits<float>::lowest();
+	float largestZ = std::numeric_limits<float>::lowest();
+	for (int i = 0; i < numVertices; i++)
+	{
+
+		if (floorMesh[i].pos.x < smallestX)
+			smallestX = floorMesh[i].pos.x;
+		
+		if (floorMesh[i].pos.x > largestX)
+			largestX = floorMesh[i].pos.x;
+
+		if (floorMesh[i].pos.z < smallestZ)
+			smallestZ = floorMesh[i].pos.z;
+
+		if (floorMesh[i].pos.z > largestZ)
+			largestZ = floorMesh[i].pos.z;
+
+	}
+
+
+	//save bounds
+	mUpperRightBound = { largestX, largestZ };
+	mLowerLeftBound = { smallestX, smallestZ };
+
+
+
 	//save the vertex list so that we don't have to lock the vertex buffer constantly
-	mVertexList = std::vector<Vertex::PosTex>(floorMesh, floorMesh + bmpWidth*bmpHeight);
+	mVertexList = std::vector<Vertex::PosNormTex>(floorMesh, floorMesh + bmpWidth*bmpHeight);
 	
-	//create the vertex buffer
-	//create a vertex buffer
-	D3D10_BUFFER_DESC bufferDesc;
-	bufferDesc.Usage = D3D10_USAGE_DEFAULT;
-	bufferDesc.ByteWidth = sizeof(Vertex::PosTex) * mVertexList.size(); //total size of buffer in bytes
-	bufferDesc.BindFlags = D3D10_BIND_VERTEX_BUFFER;
-	bufferDesc.CPUAccessFlags = 0;
-	bufferDesc.MiscFlags = 0;
-
-	D3D10_SUBRESOURCE_DATA InitData;
-	ZeroMemory(&InitData, sizeof(InitData));
-	InitData.pSysMem = floorMesh;
-	md3dDevice->CreateBuffer(&bufferDesc, &InitData, &mVB);
-
-	delete floorMesh;
-	floorMesh = NULL;
-
 
 	//create the indices
 	int numXCells = bmpWidth - 1;
@@ -133,22 +173,82 @@ void Terrain::CreateFromHeightMap(ID3D10Device* device, std::wstring pathToHeigh
 		}
 	}
 
+	mNumIndices = indices.size();
 
 	
 	//create the index buffer
-	bufferDesc.Usage = D3D10_USAGE_IMMUTABLE;
+	D3D11_BUFFER_DESC bufferDesc;
+
+	bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
 	bufferDesc.ByteWidth = sizeof(DWORD) * indices.size();
-	bufferDesc.BindFlags = D3D10_BIND_INDEX_BUFFER;
+	bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
 
 
+	D3D11_SUBRESOURCE_DATA InitData;
 	InitData.pSysMem = &indices[0];
-	md3dDevice->CreateBuffer(&bufferDesc, &InitData, &mIB);
+	mD3DDevice->CreateBuffer(&bufferDesc, &InitData, &mIB);
+
+	//calculate the normals
+	for (int vertIndex = 0; vertIndex < numVertices; vertIndex++)
+	{
+		XMVECTOR normTotal = { 0.0f, 0.0f, 0.0f };
+		
+		
+		//for each index triplet
+		int faceCount = 0;
+		for (int indIndex = 0; indIndex < mNumIndices; indIndex += 3)
+		{
+			
+			if ((indices[indIndex + 0] == vertIndex) || (indices[indIndex + 1] == vertIndex) || (indices[indIndex + 2] == vertIndex))
+			{
+				XMVECTOR v0_pos = XMLoadFloat3(&floorMesh[indices[indIndex + 0]].pos);
+				XMVECTOR v1_pos = XMLoadFloat3(&floorMesh[indices[indIndex + 1]].pos);
+				XMVECTOR v2_pos = XMLoadFloat3(&floorMesh[indices[indIndex + 2]].pos);
+
+				XMVECTOR sideA = v1_pos - v0_pos;
+				XMVECTOR sideB = v2_pos - v0_pos;
+
+				XMVECTOR faceNormal = XMVector3Cross(sideA, sideB);
+
+				normTotal += faceNormal;
+				faceCount++;
+
+				//there could only be 6 faces that a single vertex can influence, so quit early to save time
+				if (faceCount == 6)
+					break;
+			}
+		}
+		
+
+		//get the average of all the normals (avg = (n1 + n2 + n3..) / length(n1 + n2 + n3)
+		normTotal = normTotal / XMVector3Length(normTotal);
+	
+		XMStoreFloat3(&floorMesh[vertIndex].norm, normTotal);
+
+	
+
+	}
 
 
-	mNumIndices = indices.size();
+	//create the vertex buffer
+	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.ByteWidth = sizeof(Vertex::PosNormTex) * mVertexList.size(); //total size of buffer in bytes
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
+
+	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
+	InitData.pSysMem = floorMesh;
+
+	mD3DDevice->CreateBuffer(&bufferDesc, &InitData, &mVB);
 
 
+
+	delete floorMesh;
+	floorMesh = nullptr;
 }
 
 
@@ -209,7 +309,6 @@ void Terrain::CreateCollisionBoxes()
 	XMFLOAT2 ll, ur, ul, lr;
 	GetBoundingCoordinates(&ll, &ur);
 
-
 	ul.x = ll.x;
 	ul.y = ur.y;
 
@@ -217,235 +316,43 @@ void Terrain::CreateCollisionBoxes()
 	lr.y = ll.y;
 
 
-	mBoxLeftBound.init(ll, ul, 500, 1500);
-	mBoxRightBound.init(ul, ur, 500, 1500);
-	mBoxLowBound.init(ur, lr, 500, 1500);
-	mBoxUpperBound.init(lr, ll, 500, 1500);
+	mBoxLeftBound.init(ll, ul, 200, 1500);
+	mBoxRightBound.init(ul, ur, 200, 1500);
+	mBoxLowBound.init(ur, lr, 200, 1500);
+	mBoxUpperBound.init(lr, ll, 200, 1500);
 
+	XMFLOAT3 wll, wur, wul, wlr;
+	wll.x = ll.x;
+	wll.y = 0.0f;
+	wll.z = ll.y;
+
+	wur.x = ur.x;
+	wur.y = 0.0f;
+	wur.z = ur.y;
+
+	wul.x = ul.x;
+	wul.y = 0.0f;
+	wul.z = ul.y;
+
+	wlr.x = lr.x;
+	wlr.y = 0.0f;
+	wlr.z = lr.y;
 	
-	XMVECTOR xAxis = mBoxLeftBound.GetXAxis();
-	XMVECTOR yAxis = mBoxLeftBound.GetYAxis();
-	XMVECTOR zAxis = mBoxLeftBound.GetZAxis();
-	XMVECTOR center = mBoxLeftBound.GetCenter();
-	XMVECTOR extents = mBoxLeftBound.GetExtents();
-	XMFLOAT3 extentsF;
-	XMStoreFloat3(&extentsF, extents);
 
-	XMFLOAT3 points[8];
-	points[0] = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	XMVECTOR p1 = zAxis * extentsF.z * 2;
-	XMVECTOR p2 = zAxis*extentsF.z * 2 + xAxis*extentsF.x * 2;
-	XMVECTOR p3 = xAxis * extentsF.x * 2;
+	mDebugLBound.init(mD3DDevice, mBoxLeftBound.GetVertices(), XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
+	mDebugUpperBound.init(mD3DDevice, mBoxUpperBound.GetVertices(), XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
+	mDebugRBound.init(mD3DDevice, mBoxRightBound.GetVertices(), XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
+	mDebugLowBound.init(mD3DDevice, mBoxLowBound.GetVertices(), XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
 
-	XMFLOAT3 p1F, p2F, p3F;
-	XMStoreFloat3(&p1F, p1);
-	XMStoreFloat3(&p2F, p2);
-	XMStoreFloat3(&p3F, p3);
-
-	p1F.y = p2F.y = p3F.y = 0.0f;
-	
-	XMVECTOR height = yAxis * extentsF.y * 2;
-	XMFLOAT3 heightF;
-	XMStoreFloat3(&heightF, height);
-	points[4] = XMFLOAT3(0.0f, heightF.y, 0.0f);
-	XMVECTOR p5 = zAxis * extentsF.z * 2;
-	XMVECTOR p6 = zAxis*extentsF.z * 2 + xAxis*extentsF.x * 2;
-	XMVECTOR p7 = xAxis * extentsF.x * 2;
-
-	XMFLOAT3 p5F, p6F, p7F;
-	XMStoreFloat3(&p5F, p5);
-	XMStoreFloat3(&p6F, p6);
-	XMStoreFloat3(&p7F, p7);
-	
-	p5F.y = p6F.y = p7F.y = heightF.y;
-
-	points[1] = p1F;
-	points[2] = p2F;
-	points[3] = p3F;
-	points[5] = p5F;
-	points[6] = p6F;
-	points[7] = p7F;
-
-	for (int i = 0; i < 8; i++)
-	{
-		XMVECTOR v = XMLoadFloat3(&points[i]);
-		v += center;
-
-		XMStoreFloat3(&points[i], v);
-	}
-
-	mDebugLBound.init(md3dDevice, points, XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
-
-
-
-
-
-	 xAxis = mBoxUpperBound.GetXAxis();
-	 yAxis = mBoxUpperBound.GetYAxis();
-	 zAxis = mBoxUpperBound.GetZAxis();
-	 center = mBoxUpperBound.GetCenter();
-	 extents = mBoxUpperBound.GetExtents();
-	
-	XMStoreFloat3(&extentsF, extents);
-
-
-	points[0] = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	 p1 = zAxis * extentsF.z * 2;
-	 p2 = zAxis*extentsF.z * 2 + xAxis*extentsF.x * 2;
-	 p3 = xAxis * extentsF.x * 2;
-
-	
-	XMStoreFloat3(&p1F, p1);
-	XMStoreFloat3(&p2F, p2);
-	XMStoreFloat3(&p3F, p3);
-
-	p1F.y = p2F.y = p3F.y = 0.0f;
-
-	 height = yAxis * extentsF.y * 2;
-	
-	XMStoreFloat3(&heightF, height);
-	points[4] = XMFLOAT3(0.0f, heightF.y, 0.0f);
-	 p5 = zAxis * extentsF.z * 2;
-	 p6 = zAxis*extentsF.z * 2 + xAxis*extentsF.x * 2;
-	 p7 = xAxis * extentsF.x * 2;
-
-	
-	XMStoreFloat3(&p5F, p5);
-	XMStoreFloat3(&p6F, p6);
-	XMStoreFloat3(&p7F, p7);
-
-	p5F.y = p6F.y = p7F.y = heightF.y;
-
-	points[1] = p1F;
-	points[2] = p2F;
-	points[3] = p3F;
-	points[5] = p5F;
-	points[6] = p6F;
-	points[7] = p7F;
-
-	for (int i = 0; i < 8; i++)
-	{
-		XMVECTOR v = XMLoadFloat3(&points[i]);
-		v += center;
-
-		XMStoreFloat3(&points[i], v);
-	}
-
-	mDebugUpperBound.init(md3dDevice, points, XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
-
-
-	xAxis = mBoxRightBound.GetXAxis();
-	yAxis = mBoxRightBound.GetYAxis();
-	zAxis = mBoxRightBound.GetZAxis();
-	center = mBoxRightBound.GetCenter();
-	extents = mBoxRightBound.GetExtents();
-
-	XMStoreFloat3(&extentsF, extents);
-
-
-	points[0] = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	p1 = zAxis * extentsF.z * 2;
-	p2 = zAxis*extentsF.z * 2 + xAxis*extentsF.x * 2;
-	p3 = xAxis * extentsF.x * 2;
-
-
-	XMStoreFloat3(&p1F, p1);
-	XMStoreFloat3(&p2F, p2);
-	XMStoreFloat3(&p3F, p3);
-
-	p1F.y = p2F.y = p3F.y = 0.0f;
-
-	height = yAxis * extentsF.y * 2;
-
-	XMStoreFloat3(&heightF, height);
-	points[4] = XMFLOAT3(0.0f, heightF.y, 0.0f);
-	p5 = zAxis * extentsF.z * 2;
-	p6 = zAxis*extentsF.z * 2 + xAxis*extentsF.x * 2;
-	p7 = xAxis * extentsF.x * 2;
-
-
-	XMStoreFloat3(&p5F, p5);
-	XMStoreFloat3(&p6F, p6);
-	XMStoreFloat3(&p7F, p7);
-
-	p5F.y = p6F.y = p7F.y = heightF.y;
-
-	points[1] = p1F;
-	points[2] = p2F;
-	points[3] = p3F;
-	points[5] = p5F;
-	points[6] = p6F;
-	points[7] = p7F;
-
-	for (int i = 0; i < 8; i++)
-	{
-		XMVECTOR v = XMLoadFloat3(&points[i]);
-		v += center;
-
-		XMStoreFloat3(&points[i], v);
-	}
-
-	mDebugRBound.init(md3dDevice, points, XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
-
-
-	xAxis = mBoxLowBound.GetXAxis();
-	yAxis = mBoxLowBound.GetYAxis();
-	zAxis = mBoxLowBound.GetZAxis();
-	center = mBoxLowBound.GetCenter();
-	extents = mBoxLowBound.GetExtents();
-
-	XMStoreFloat3(&extentsF, extents);
-
-
-	points[0] = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	p1 = zAxis * extentsF.z * 2;
-	p2 = zAxis*extentsF.z * 2 + xAxis*extentsF.x * 2;
-	p3 = xAxis * extentsF.x * 2;
-
-
-	XMStoreFloat3(&p1F, p1);
-	XMStoreFloat3(&p2F, p2);
-	XMStoreFloat3(&p3F, p3);
-
-	p1F.y = p2F.y = p3F.y = 0.0f;
-
-	height = yAxis * extentsF.y * 2;
-
-	XMStoreFloat3(&heightF, height);
-	points[4] = XMFLOAT3(0.0f, heightF.y, 0.0f);
-	p5 = zAxis * extentsF.z * 2;
-	p6 = zAxis*extentsF.z * 2 + xAxis*extentsF.x * 2;
-	p7 = xAxis * extentsF.x * 2;
-
-
-	XMStoreFloat3(&p5F, p5);
-	XMStoreFloat3(&p6F, p6);
-	XMStoreFloat3(&p7F, p7);
-
-	p5F.y = p6F.y = p7F.y = heightF.y;
-
-	points[1] = p1F;
-	points[2] = p2F;
-	points[3] = p3F;
-	points[5] = p5F;
-	points[6] = p6F;
-	points[7] = p7F;
-
-	for (int i = 0; i < 8; i++)
-	{
-		XMVECTOR v = XMLoadFloat3(&points[i]);
-		v += center;
-
-		XMStoreFloat3(&points[i], v);
-	}
-
-	mDebugLowBound.init(md3dDevice, points, XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
-
+	mDebugSmallLBound.init(mD3DDevice, wll, 50.0f, 100.0f, XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
+	mDebugSmallUpperBound.init(mD3DDevice, wur, 50.0f, 100.0f, L"..\\HardwareRasterizer\\Textures\\grass.bmp");
+	mDebugSmallRBound.init(mD3DDevice, wul, 50.0f, 100.0f, L"..\\HardwareRasterizer\\Textures\\grass.bmp");
+	mDebugSmallLowBound.init(mD3DDevice, wlr, 50.0f, 100.0f, L"..\\HardwareRasterizer\\Textures\\grass.bmp");
 }
 
 void Terrain::SetTexture(std::wstring texturePath)
 {
-	D3DX10CreateShaderResourceViewFromFile(md3dDevice, texturePath.c_str(), NULL, NULL, &mTextureResourceView, NULL);
+	HRESULT hr = CreateWICTextureFromFile(mD3DDevice, texturePath.c_str(), NULL, &mTextureResourceView);
 }
 
 void Terrain::GetHeightAtPosition(XMFLOAT3& playerPos, float** OutHeight)
@@ -520,9 +427,10 @@ void Terrain::GetHeightAtPosition(XMFLOAT3& playerPos, float** OutHeight)
 	float partialTri3Area = FindTriangleArea(flatLeftLowerPoint, flatRightLowerPoint, flatPlayerPos);
 
 
+	float triOneErrorMargin = triOneArea*0.002f;
 
 	//check if the sum of the partial triangle areas equal the area of the overall triangle
-	if ((partialTri1Area + partialTri2Area + partialTri3Area >= triOneArea - 5) && (partialTri1Area + partialTri2Area + partialTri3Area <= triOneArea + 5))
+	if ((partialTri1Area + partialTri2Area + partialTri3Area >= triOneArea - triOneErrorMargin) && (partialTri1Area + partialTri2Area + partialTri3Area <= triOneArea + triOneErrorMargin))
 	{
 		playerTriangle.points[0] = leftLowerPoint;
 		playerTriangle.points[1] = leftUpperPoint;
@@ -538,10 +446,11 @@ void Terrain::GetHeightAtPosition(XMFLOAT3& playerPos, float** OutHeight)
 	float partialTri2Area2 = FindTriangleArea(flatRightUpperPoint, flatRightLowerPoint, flatPlayerPos);
 	float partialTri3Area2 = FindTriangleArea(flatRightLowerPoint, flatLeftUpperPoint, flatPlayerPos);
 
+	float triTwoErrorMargin = triTwoArea*0.002f;
 
 
 	//check if the sum of the partial triangle areas equal the area of the overall triangle
-	if ((partialTri1Area2 + partialTri2Area2 + partialTri3Area2 >= triTwoArea - 5) && (partialTri1Area2 + partialTri2Area2 + partialTri3Area2 <= triTwoArea + 5))
+	if ((partialTri1Area2 + partialTri2Area2 + partialTri3Area2 >= triTwoArea - triTwoErrorMargin) && (partialTri1Area2 + partialTri2Area2 + partialTri3Area2 <= triTwoArea + triTwoErrorMargin))
 	{
 		playerTriangle.points[0] = leftUpperPoint;
 		playerTriangle.points[1] = rightUpperPoint;
@@ -625,7 +534,7 @@ void Terrain::GetHeightAtPosition(XMFLOAT3& playerPos, float** OutHeight)
 
 	**OutHeight = finalPlayerPosf.y;
 	
-	
+
 /*
 
 	int bmpHeight = mHeightMap->GetHeight();

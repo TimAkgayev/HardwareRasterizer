@@ -1,28 +1,35 @@
 #pragma once
-#include "d3dcommon.h"
+#include "common_includes.h"
 
 namespace Shaders
 {
-	extern ID3D10VertexShader*  VS_SimpleProjection;
-	extern ID3D10PixelShader*   PS_SimpleTexture;
+	extern ID3D11VertexShader*  VS_SimpleProjection;
+	extern ID3D11PixelShader*   PS_SimpleTexture;
 
-	extern ID3D10VertexShader*  VS_SimpleProjectionColor;
-	extern ID3D10PixelShader*   PS_SimpleColor;
+	extern ID3D11VertexShader*  VS_SimpleProjectionColor;
+	extern ID3D11PixelShader*   PS_SimpleColor;
 
-	extern ID3D10VertexShader*  VS_SkyBox;
-	extern ID3D10PixelShader*   PS_SkyBox;
+	extern ID3D11VertexShader*  VS_SkyBox;
+	extern ID3D11PixelShader*   PS_SkyBox;
+
+	extern ID3D11VertexShader*  VS_DirectionalLight;
+	extern ID3D11PixelShader*   PS_DirectionalLight;
 
 
-	extern ID3D10Blob*	BLOB_VS_SimpleProjection;
-	extern ID3D10Blob*  BLOB_PS_SimpleTexture;
 
-	extern ID3D10Blob*	BLOB_VS_SimpleProjectionColor;
-	extern ID3D10Blob*  BLOB_PS_SimpleColor;
+	extern ID3DBlob*	BLOB_VS_SimpleProjection;
+	extern ID3DBlob*  BLOB_PS_SimpleTexture;
 
-	extern ID3D10Blob*	BLOB_VS_SkyBox;
-	extern ID3D10Blob*  BLOB_PS_SkyBox;
+	extern ID3DBlob*	BLOB_VS_SimpleProjectionColor;
+	extern ID3DBlob*  BLOB_PS_SimpleColor;
+
+	extern ID3DBlob*	BLOB_VS_SkyBox;
+	extern ID3DBlob*  BLOB_PS_SkyBox;
+
+	extern ID3DBlob*	BLOB_VS_DirectionalLight;
+	extern ID3DBlob*  BLOB_PS_DirectionalLight;
 
 
 	HRESULT CompileShaderFromFile(WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
-	void InitAll(ID3D10Device* device);
+	void InitAll(ID3D11Device* device);
 };

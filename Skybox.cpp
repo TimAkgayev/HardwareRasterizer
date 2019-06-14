@@ -1,9 +1,11 @@
 #include "Skybox.h"
 #include "Vertex.h"
 #include "ConstantBuffers.h"
+#include <WICTextureLoader.h>
+#include <DDSTextureLoader.h>
 
 Skybox::Skybox()
-	: md3dDevice(0), mVB(0), mIB(0), mSkyCubeMapSRV(0)
+	: mDeviceContext(0), mVB(0), mIB(0), mSkyCubeMapSRV(0)
 {
 	mNumIndices = 0;
 }
@@ -63,56 +65,7 @@ void Skybox::mSubdivide(std::vector<XMVECTOR>& vertices, std::vector<DWORD>& ind
 void Skybox::mBuildGeoSphere(UINT numSubdivisions, float radius, std::vector<XMVECTOR>& vertices, std::vector<DWORD>& indices)
 {
 
-	/*
-	float width = 50.0f;
-	float height = 50.0f;
 
-
-
-
-	Vertex::Skybox mesh[] =
-	{
-		{ XMFLOAT3(-width / 2.0f, height / 2.0f, -width / 2.0f)},
-		{ XMFLOAT3(width / 2.0f, height / 2.0f, -width / 2.0f)},
-		{ XMFLOAT3(width / 2.0f, height / 2.0f, width / 2.0f) },
-		{ XMFLOAT3(-width / 2.0f, height / 2.0f, width / 2.0f) },
-		{ XMFLOAT3(-width / 2.0f, -height / 2.0f, -width / 2.0f) },
-		{ XMFLOAT3(width / 2.0f, -height / 2.0f, -width / 2.0f)},
-		{ XMFLOAT3(width / 2.0f, -height / 2.0f, width / 2.0f)},
-		{ XMFLOAT3(-width / 2.0f, -height / 2.0f, width / 2.0f) }
-	};
-
-	for (int i = 0; i < 8; i++)
-		vertices.push_back(XMLoadFloat3(&mesh[i].pos));
-
-
-
-	//create index buffer
-	DWORD ibuffer[] =
-	{
-		3,1,0,
-		2,1,3,
-
-		0,5,4,
-		1,5,0,
-
-		3,4,7,
-		0,4,3,
-
-		1,6,5,
-		2,6,1,
-
-		2,7,6,
-		3,7,2,
-
-		6,4,5,
-		7,4,6,
-	};
-
-	for (int i = 0; i < 36; i++)
-		indices.push_back(ibuffer[i]);
-
-	*/
 	// Put a cap on the number of subdivisions.
 	numSubdivisions = Min(numSubdivisions, UINT(5));
 
@@ -146,12 +99,6 @@ void Skybox::mBuildGeoSphere(UINT numSubdivisions, float radius, std::vector<XMV
 		10,1,6, 11,0,9, 2,11,9, 5,2,9,  11,2,7
 	};
 
-	for (int i = 0; i < 60; i+=3)
-	{
-		DWORD t = k[i];
-		k[i] = k[i + 2];
-		k[i + 2] = t;
-	}
 
 	vertices.resize(12);
 	indices.resize(60);
@@ -176,13 +123,14 @@ void Skybox::mBuildGeoSphere(UINT numSubdivisions, float radius, std::vector<XMV
 
 
 
-void Skybox::init(ID3D10Device* device, float radius)
+void Skybox::init(ID3D11Device* device, float radius)
 {
-	md3dDevice = device;
-	
+	mD3DDevice = device;
+	mD3DDevice->GetImmediateContext(&mDeviceContext);
 	
 	//create a skybox ============================================================================
-	HRESULT hr = D3DX10CreateShaderResourceViewFromFile(md3dDevice, L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Projects\\HardwareRasterizer\\CubeMapLuna\\grassenvmap1024.dds", 0, 0, &mSkyCubeMapSRV, 0);
+	//HRESULT hr = D3DX11CreateShaderResourceViewFromFile(mD3DDevice, L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Projects\\HardwareRasterizer\\CubeMapLuna\\grassenvmap1024.dds", 0, 0, &mSkyCubeMapSRV, 0);
+	HRESULT hr = CreateDDSTextureFromFile(mD3DDevice, L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Projects\\HardwareRasterizer\\CubeMapLuna\\grassenvmap1024.dds", NULL, &mSkyCubeMapSRV);
 
 	std::vector<XMVECTOR> vertices;
 	std::vector<DWORD> indices;
@@ -198,9 +146,9 @@ void Skybox::init(ID3D10Device* device, float radius)
 	}
 
 	//set up rasterizer flags ============================================
-	D3D10_RASTERIZER_DESC rasterizerStateSolid;
-	rasterizerStateSolid.CullMode = D3D10_CULL_NONE;
-	rasterizerStateSolid.FillMode = D3D10_FILL_SOLID;
+	D3D11_RASTERIZER_DESC rasterizerStateSolid;
+	rasterizerStateSolid.CullMode = D3D11_CULL_NONE;
+	rasterizerStateSolid.FillMode = D3D11_FILL_SOLID;
 	rasterizerStateSolid.FrontCounterClockwise = false;
 	rasterizerStateSolid.DepthBias = false;
 	rasterizerStateSolid.DepthBiasClamp = 0;
@@ -209,7 +157,7 @@ void Skybox::init(ID3D10Device* device, float radius)
 	rasterizerStateSolid.ScissorEnable = false;
 	rasterizerStateSolid.MultisampleEnable = false;
 	rasterizerStateSolid.AntialiasedLineEnable = true;
-	md3dDevice->CreateRasterizerState(&rasterizerStateSolid, &mRasterizerStateNoCull);
+	mD3DDevice->CreateRasterizerState(&rasterizerStateSolid, &mRasterizerStateNoCull);
 
 
 
@@ -256,27 +204,27 @@ void Skybox::init(ID3D10Device* device, float radius)
 	*/
 
 
-	D3D10_BUFFER_DESC vbd;
-	vbd.Usage = D3D10_USAGE_IMMUTABLE;
+	D3D11_BUFFER_DESC vbd;
+	vbd.Usage = D3D11_USAGE_IMMUTABLE;
 	vbd.ByteWidth = sizeof(Vertex::Skybox) * (UINT)skyVerts.size();
-	vbd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vbd.CPUAccessFlags = 0;
 	vbd.MiscFlags = 0;
-	D3D10_SUBRESOURCE_DATA vinitData;
+	D3D11_SUBRESOURCE_DATA vinitData;
 	vinitData.pSysMem = &skyVerts[0];
-	HandleError(md3dDevice->CreateBuffer(&vbd, &vinitData, &mVB));
+	HandleError(mD3DDevice->CreateBuffer(&vbd, &vinitData, &mVB));
 
 	mNumIndices = (UINT)indices.size();
 
-	D3D10_BUFFER_DESC ibd;
-	ibd.Usage = D3D10_USAGE_IMMUTABLE;
+	D3D11_BUFFER_DESC ibd;
+	ibd.Usage = D3D11_USAGE_IMMUTABLE;
 	ibd.ByteWidth = sizeof(DWORD) * mNumIndices;
-	ibd.BindFlags = D3D10_BIND_INDEX_BUFFER;
+	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	ibd.CPUAccessFlags = 0;
 	ibd.MiscFlags = 0;
-	D3D10_SUBRESOURCE_DATA iinitData;
+	D3D11_SUBRESOURCE_DATA iinitData;
 	iinitData.pSysMem = &indices[0];
-	HandleError(md3dDevice->CreateBuffer(&ibd, &iinitData, &mIB));
+	HandleError(mD3DDevice->CreateBuffer(&ibd, &iinitData, &mIB));
 }
 
 void Skybox::draw(const Camera& camera)
@@ -286,33 +234,32 @@ void Skybox::draw(const Camera& camera)
 	XMFLOAT3 eyePos = camera.GetPosition();
 	
 	
-	ConstantBuffers::ProjectionVariables projVars;
-	projVars.View =  XMMatrixIdentity();
-	projVars.Projection = XMMatrixIdentity();
-	projVars.World = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+	ConstantBuffers::WorldMatrices worldMat;
+	worldMat.World = XMMatrixTranspose(XMMatrixTranslation(eyePos.x, eyePos.y, eyePos.z));
 
-
-	md3dDevice->UpdateSubresource(ConstantBuffers::ViewWorldProjBuffer, 0, NULL, &projVars, 0, 0);
+	mDeviceContext->UpdateSubresource(ConstantBuffers::WorldMatrixBuffer, 0, NULL, &worldMat, 0, 0);
 
 
 	UINT stride = sizeof(Vertex::Skybox);
 	UINT offset = 0;
 
-	ID3D10RasterizerState* oldState;
-	md3dDevice->RSGetState(&oldState);
+	ID3D11RasterizerState* oldState;
+	mDeviceContext->RSGetState(&oldState);
 
-	md3dDevice->RSSetState(mRasterizerStateNoCull);
+	mDeviceContext->RSSetState(mRasterizerStateNoCull);
 
-	md3dDevice->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
-	md3dDevice->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
-	md3dDevice->IASetInputLayout(InputLayout::Skybox);
-	md3dDevice->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	md3dDevice->VSSetShader(Shaders::VS_SkyBox);
-	md3dDevice->PSSetShader(Shaders::PS_SkyBox);
-	md3dDevice->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewWorldProjBuffer);
-	md3dDevice->PSSetConstantBuffers(0, 1, &ConstantBuffers::ViewWorldProjBuffer);
-	md3dDevice->PSSetShaderResources(1, 1, &mSkyCubeMapSRV);
-	md3dDevice->DrawIndexed(mNumIndices, 0, 0);
+	mDeviceContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
+	mDeviceContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
+	mDeviceContext->IASetInputLayout(InputLayout::Skybox);
+	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mDeviceContext->VSSetShader(Shaders::VS_SkyBox, NULL, 0);
+	mDeviceContext->PSSetShader(Shaders::PS_SkyBox, NULL, 0);
+	mDeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
+	mDeviceContext->PSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
+	mDeviceContext->VSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
+	mDeviceContext->PSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
+	mDeviceContext->PSSetShaderResources(1, 1, &mSkyCubeMapSRV);
+	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
 	
-	md3dDevice->RSSetState(oldState);
+	mDeviceContext->RSSetState(oldState);
 }

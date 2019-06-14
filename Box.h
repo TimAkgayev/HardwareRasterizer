@@ -1,5 +1,5 @@
 #pragma once
-#include "d3dcommon.h"
+#include "common_includes.h"
 #include "InputLayouts.h"
 #include <string>
 #include "Vertex.h"
@@ -14,9 +14,9 @@ public:
 	Box();
 	~Box();
 
-	void init(ID3D10Device* device, float width, float height, XMFLOAT4 color);
-	void init(ID3D10Device* device, float width, float height, std::wstring texturePath);
-	void init(ID3D10Device* device, XMFLOAT3* eightPoints, XMFLOAT4 color);
+	void init(ID3D11Device* device, XMFLOAT3 position, float width, float height, XMFLOAT4 color);
+	void init(ID3D11Device* device, XMFLOAT3 position, float width, float height, std::wstring texturePath);
+	void init(ID3D11Device* device, const std::vector<XMVECTOR>& eightPoints, XMFLOAT4 color);
 
 	void SetIsWireframe(bool isWireframe);
 
@@ -26,16 +26,23 @@ private:
 
 	DWORD mNumVertices;
 	DWORD mNumFaces;
+	XMFLOAT3 mPosition;
 
-	ID3D10Device* md3dDevice;
-	ID3D10Buffer* mVB;
-	ID3D10Buffer* mIB;
 
-	ID3D10RasterizerState* mRasterizerStateWireframe;
+	ID3D11Device* mD3DDevice;
+	ID3D11DeviceContext* mDeviceContext;
+
+	ID3D11Buffer* mVB;
+	ID3D11Buffer* mIB;
+
+	ID3D11RasterizerState* mRasterizerStateWireframe;
 
 	BOOL mIsWireframe;
+	BOOL mIsPretransformed;
 
-	ID3D10ShaderResourceView* mTextureResourceView;
+	ID3D11ShaderResourceView* mTextureResourceView;
 	XMFLOAT4 mColor;
+
+
 
 };

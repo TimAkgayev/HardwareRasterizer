@@ -62,6 +62,9 @@ int DirectXApplication::run()
 		{
 			mTimer.tick();
 
+			if (mTimer.getDeltaTime() < 0.016666f)
+				Sleep(1);
+
 			if (!mAppPaused)
 				updateScene(mTimer.getDeltaTime());
 			else
@@ -74,8 +77,25 @@ int DirectXApplication::run()
 
 }
 
+
+
 void DirectXApplication::initApp()
 {
+
+	//initialize COM interface to use the WIC imagine functions
+
+#if (_WIN32_WINNT >= 0x0A00 /*_WIN32_WINNT_WIN10*/)
+	Microsoft::WRL::Wrappers::RoInitializeWrapper initialize(RO_INIT_MULTITHREADED);
+	if (FAILED(initialize))
+		return;// error
+#else
+	HRESULT hr = CoInitializeEx(nullptr, COINITBASE_MULTITHREADED);
+	if (FAILED(hr))
+		// error
+#endif
+	HRESULT hr = CoInitializeEx(nullptr, COINITBASE_MULTITHREADED);
+
+
 	initMainWindow();
 	initDirectX();
 }
@@ -139,8 +159,12 @@ void DirectXApplication::initMainWindow()
 }
 
 
+
 void DirectXApplication::initDirectX()
 {
+
+
+
 	//setup swap chain ===================================================
 	DXGI_SWAP_CHAIN_DESC swapChainDesc;
 	ZeroMemory(&swapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
@@ -169,11 +193,13 @@ void DirectXApplication::initDirectX()
 	//create device ===================================================
 	UINT createDeviceFlags = 0;
 #ifdef _DEBUG 
-	createDeviceFlags |= D3D10_CREATE_DEVICE_DEBUG;
+	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
+	D3D_FEATURE_LEVEL d3dFL;
+
 	HRESULT hr1;
-	if (FAILED(hr1 = D3D10CreateDeviceAndSwapChain(NULL, D3D10_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, D3D10_SDK_VERSION, &swapChainDesc, &mD3D10SwapChain, &mD3D10Device)))
+	if (FAILED(hr1 = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, 0, 0, D3D11_SDK_VERSION, &swapChainDesc, &mD3D11SwapChain, &mD3DDevice, &d3dFL, &mDeviceContext)))
 	{
 		ZeroMemory(&swapChainDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
 		MessageBox(NULL, TEXT("Failed to create device and swap chain"), TEXT("Error"), 0);
@@ -183,18 +209,18 @@ void DirectXApplication::initDirectX()
 
 
 	// create render target for merger state ===================================================
-	ID3D10Texture2D* pBackBuffer;
-	if (FAILED(mD3D10SwapChain->GetBuffer(0, __uuidof(ID3D10Texture2D), (LPVOID*)&pBackBuffer))) return;
+	ID3D11Texture2D* pBackBuffer;
+	if (FAILED(mD3D11SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer))) return;
 
 	//try to create render target view
-	if (FAILED(mD3D10Device->CreateRenderTargetView(pBackBuffer, NULL, &mD3D10RenderTargetView))) return;
+	if (FAILED(mD3DDevice->CreateRenderTargetView(pBackBuffer, NULL, &mD3D11RenderTargetView))) return;
 
 	//release the back buffer
 	pBackBuffer->Release();
 
 
 	//create depth stencil texture
-	D3D10_TEXTURE2D_DESC descDepth;
+	D3D11_TEXTURE2D_DESC descDepth;
 
 	descDepth.Width = mClientWidth;
 	descDepth.Height = mClientHeight;
@@ -203,54 +229,75 @@ void DirectXApplication::initDirectX()
 	descDepth.Format = DXGI_FORMAT_D32_FLOAT;
 	descDepth.SampleDesc.Count = 1;
 	descDepth.SampleDesc.Quality = 0;
-	descDepth.Usage = D3D10_USAGE_DEFAULT;
-	descDepth.BindFlags = D3D10_BIND_DEPTH_STENCIL;
+	descDepth.Usage = D3D11_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 	descDepth.CPUAccessFlags = 0;
 	descDepth.MiscFlags = 0;
 
-	if (FAILED(mD3D10Device->CreateTexture2D(&descDepth, NULL, &mD3D10DepthStencilTexture))) return;
-
-	// Create the depth stencil view
-	D3D10_DEPTH_STENCIL_VIEW_DESC descDSV;
-	descDSV.Format = descDepth.Format;
-	descDSV.ViewDimension = D3D10_DSV_DIMENSION_TEXTURE2D;
-	descDSV.Texture2D.MipSlice = 0;
-
-	if (FAILED(mD3D10Device->CreateDepthStencilView(mD3D10DepthStencilTexture, &descDSV, &mD3D10DepthStencilView))) return;
+	if (FAILED(mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3D11DepthStencilTexture))) return;
+	if (FAILED(mD3DDevice->CreateDepthStencilView(mD3D11DepthStencilTexture, 0, &mD3D11DepthStencilView))) return;
 
 	//set render targets
-	mD3D10Device->OMSetRenderTargets(1, &mD3D10RenderTargetView, mD3D10DepthStencilView);
+	mDeviceContext->OMSetRenderTargets(1, &mD3D11RenderTargetView, mD3D11DepthStencilView);
 
+
+	D3D11_DEPTH_STENCIL_DESC dsDesc;
+
+	// Depth test parameters
+	dsDesc.DepthEnable = true;
+	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+
+	// Stencil test parameters
+	dsDesc.StencilEnable = true;
+	dsDesc.StencilReadMask = 0xFF;
+	dsDesc.StencilWriteMask = 0xFF;
+
+	// Stencil operations if pixel is front-facing
+	dsDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	dsDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+	dsDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	dsDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+	// Stencil operations if pixel is back-facing
+	dsDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	dsDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+	dsDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	dsDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+	// Create depth stencil state
+	mD3DDevice->CreateDepthStencilState(&dsDesc, &mDepthStencilState);
+	mDeviceContext->OMSetDepthStencilState(mDepthStencilState, 1);
 
 	//set view port aka region of render target ===================================================
-	mD3D10Viewport.Width = swapChainDesc.BufferDesc.Width;
-	mD3D10Viewport.Height = swapChainDesc.BufferDesc.Height;
-	mD3D10Viewport.MinDepth = 0.0f;
-	mD3D10Viewport.MaxDepth = 1.0f;
-	mD3D10Viewport.TopLeftX = 0;
-	mD3D10Viewport.TopLeftY = 0;
+	mD3D11Viewport.Width = swapChainDesc.BufferDesc.Width;
+	mD3D11Viewport.Height = swapChainDesc.BufferDesc.Height;
+	mD3D11Viewport.MinDepth = 0.0f;
+	mD3D11Viewport.MaxDepth = 1.0f;
+	mD3D11Viewport.TopLeftX = 0;
+	mD3D11Viewport.TopLeftY = 0;
 
-	mD3D10Device->RSSetViewports(1, &mD3D10Viewport);
+	mDeviceContext->RSSetViewports(1, &mD3D11Viewport);
 
 
 
 	// Create the sampler state =============================================================
-	D3D10_SAMPLER_DESC sampDesc;
+	D3D11_SAMPLER_DESC sampDesc;
 	ZeroMemory(&sampDesc, sizeof(sampDesc));
-	sampDesc.Filter = D3D10_FILTER_MIN_MAG_MIP_LINEAR;
-	sampDesc.AddressU = D3D10_TEXTURE_ADDRESS_WRAP;
-	sampDesc.AddressV = D3D10_TEXTURE_ADDRESS_WRAP;
-	sampDesc.AddressW = D3D10_TEXTURE_ADDRESS_WRAP;
-	sampDesc.ComparisonFunc = D3D10_COMPARISON_NEVER;
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 	sampDesc.MinLOD = 0;
-	sampDesc.MaxLOD = D3D10_FLOAT32_MAX;
-	mD3D10Device->CreateSamplerState(&sampDesc, &mD3D10SamplerState);
-	mD3D10Device->PSSetSamplers(0, 1, &mD3D10SamplerState);
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	mD3DDevice->CreateSamplerState(&sampDesc, &mD3D11SamplerState);
+	mDeviceContext->PSSetSamplers(0, 1, &mD3D11SamplerState);
 
 	//set up rasterizer flags ============================================
-	D3D10_RASTERIZER_DESC rasterizerStateSolid;
-	rasterizerStateSolid.CullMode = D3D10_CULL_BACK;
-	rasterizerStateSolid.FillMode = D3D10_FILL_SOLID;
+	D3D11_RASTERIZER_DESC rasterizerStateSolid;
+	rasterizerStateSolid.CullMode = D3D11_CULL_BACK;
+	rasterizerStateSolid.FillMode = D3D11_FILL_SOLID;
 	rasterizerStateSolid.FrontCounterClockwise = false;
 	rasterizerStateSolid.DepthBias = false;
 	rasterizerStateSolid.DepthBiasClamp = 0;
@@ -259,26 +306,30 @@ void DirectXApplication::initDirectX()
 	rasterizerStateSolid.ScissorEnable = false;
 	rasterizerStateSolid.MultisampleEnable = false;
 	rasterizerStateSolid.AntialiasedLineEnable = true;
-	mD3D10Device->CreateRasterizerState(&rasterizerStateSolid, &mRasterizerStateSolid);
+	mD3DDevice->CreateRasterizerState(&rasterizerStateSolid, &mRasterizerStateSolid);
 
 	
 	//set up alpha blending for transparent textures ============================================
 
-	D3D10_BLEND_DESC BlendState;
-	ZeroMemory(&BlendState, sizeof(D3D10_BLEND_DESC));
+	
+	D3D11_BLEND_DESC BlendDesc;
+	ZeroMemory(&BlendDesc, sizeof(D3D11_BLEND_DESC));
 
-	BlendState.BlendEnable[0] = TRUE;
-	BlendState.SrcBlend = D3D10_BLEND_SRC_ALPHA;
-	BlendState.DestBlend = D3D10_BLEND_INV_SRC_ALPHA;
-	BlendState.BlendOp = D3D10_BLEND_OP_ADD;
-	BlendState.SrcBlendAlpha = D3D10_BLEND_ZERO;
-	BlendState.DestBlendAlpha = D3D10_BLEND_ZERO;
-	BlendState.BlendOpAlpha = D3D10_BLEND_OP_ADD;
-	BlendState.RenderTargetWriteMask[0] = D3D10_COLOR_WRITE_ENABLE_ALL;
+	
 
-	mD3D10Device->CreateBlendState(&BlendState, &mD3D10BlendState);
-	mD3D10Device->OMSetBlendState(mD3D10BlendState, 0, 0xffffffff);
+	BlendDesc.RenderTarget[0].BlendEnable = TRUE;
+	BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	BlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	BlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ZERO;
+	BlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	BlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	BlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
+	mD3DDevice->CreateBlendState(&BlendDesc, &mD3D11BlendState);
+	mDeviceContext->OMSetBlendState(mD3D11BlendState, 0, 0xffffffff);
+
+	
 }
 
 

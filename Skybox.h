@@ -1,5 +1,5 @@
 #pragma once
-#include "d3dcommon.h"
+#include "common_includes.h"
 #include <vector>
 #include "Camera.h"
 #include "InputLayouts.h"
@@ -12,7 +12,7 @@ public:
 	Skybox();
 	~Skybox();
 
-	void init(ID3D10Device* device, float radius);
+	void init(ID3D11Device* device, float radius);
 	void draw(const Camera& camera);
 
 
@@ -23,12 +23,13 @@ private:
 	Skybox& operator=(const Skybox& rhs);
 
 private:
-	ID3D10Device* md3dDevice;
-	ID3D10Buffer* mVB;
-	ID3D10Buffer* mIB;
+	ID3D11Device* mD3DDevice;
+	ID3D11DeviceContext* mDeviceContext;
+	ID3D11Buffer* mVB;
+	ID3D11Buffer* mIB;
 
-	ID3D10ShaderResourceView* mSkyCubeMapSRV;
-	ID3D10RasterizerState* mRasterizerStateNoCull;
+	ID3D11ShaderResourceView* mSkyCubeMapSRV;
+	ID3D11RasterizerState* mRasterizerStateNoCull;
 
 	UINT mNumIndices;
 

@@ -24,7 +24,7 @@ public:
 
 private:
 	
-	ID3D10ShaderResourceView* mSkyCubeMapSRV;
+	ID3D11ShaderResourceView* mSkyCubeMapSRV;
 
 
 
@@ -33,7 +33,6 @@ private:
 private:
 
 	Terrain terrain;
-	Box box;
 	CharacterController* mCharacterController;
 	Skybox mSkybox;
 
@@ -75,32 +74,30 @@ void NewDXApp::initApp()
 
 	mInitResources();
 
-	terrain.CreateFromHeightMap(mD3D10Device, L"..\\HardwareRasterizer\\Heightmaps\\TestFloor.bmp", 100, 20);
-	terrain.SetTexture(L"..\\HardwareRasterizer\\Textures\\Test.bmp");
+	terrain.CreateFromHeightMap(mD3DDevice, L"..\\HardwareRasterizer\\Heightmaps\\TestFloorSmall.bmp", 1000, 50);
+	terrain.SetTexture(L"..\\HardwareRasterizer\\Textures\\grass.bmp");
 	terrain.CreateCollisionBoxes();
 
-	box.init(mD3D10Device, 20, 30, L"..\\HardwareRasterizer\\Textures\\Test.bmp");
 	
 	mCharacterController = new CharacterController(&terrain);
 	mCharacterController->SetMoveSpeed(140.0f);
 
-	mSkybox.init(mD3D10Device, 100000.0f);
+	mSkybox.init(mD3DDevice, 1000000.0f);
+
 
 }
 
 void NewDXApp::updateScene(float dt)
 {
+
 	DirectXApplication::updateScene(dt);
-
-
-
 	mCharacterController->Update(dt);
 
 	projectionMatrices.View = XMMatrixTranspose(mCharacterController->GetCamera().GetViewMatrix());
 	projectionMatrices.Projection = XMMatrixTranspose(mCharacterController->GetCamera().GetProjectionMatrix());
-	projectionMatrices.World = XMMatrixTranspose(XMMatrixIdentity());
 
-	mD3D10Device->UpdateSubresource(ConstantBuffers::ViewWorldProjBuffer, 0, NULL, &projectionMatrices, 0, 0);
+
+	mDeviceContext->UpdateSubresource(ConstantBuffers::ViewProjBuffer, 0, NULL, &projectionMatrices, 0, 0);
 
 }
 
@@ -109,16 +106,16 @@ void NewDXApp::drawScene()
 
 	// Clear the back buffer 
 	float clearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; // red,green,blue,alpha
-	mD3D10Device->ClearRenderTargetView(mD3D10RenderTargetView, clearColor);
-	mD3D10Device->ClearDepthStencilView(mD3D10DepthStencilView, D3D10_CLEAR_DEPTH, 1, 1);
+	mDeviceContext->ClearRenderTargetView(mD3D11RenderTargetView, clearColor);
+	mDeviceContext->ClearDepthStencilView(mD3D11DepthStencilView, D3D11_CLEAR_DEPTH, 1, 0);
+	mDeviceContext->ClearDepthStencilView(mD3D11DepthStencilView, D3D11_CLEAR_STENCIL, 1, 1);
 
 
 	terrain.draw();
-	box.draw();
 	mSkybox.draw(mCharacterController->GetCamera());
 
 
-	mD3D10SwapChain->Present(0, 0);
+	mD3D11SwapChain->Present(0, 0);
 
 }
 
@@ -132,9 +129,9 @@ void NewDXApp::mInitResources()
 {
 	
 
-	Shaders::InitAll(mD3D10Device);
-	InputLayout::InitAll(mD3D10Device);
-	ConstantBuffers::InitAll(mD3D10Device);
+	Shaders::InitAll(mD3DDevice);
+	InputLayout::InitAll(mD3DDevice);
+	ConstantBuffers::InitAll(mD3DDevice);
 	
 
 

@@ -1,35 +1,48 @@
 #include "InputLayouts.h"
 
-ID3D10InputLayout* InputLayout::PosTex = nullptr;
-ID3D10InputLayout* InputLayout::PosColor = nullptr;
-ID3D10InputLayout* InputLayout::Skybox = nullptr;
+ID3D11InputLayout* InputLayout::PosTex = nullptr;
+ID3D11InputLayout* InputLayout::PosColor = nullptr;
+ID3D11InputLayout* InputLayout::Skybox = nullptr;
+ID3D11InputLayout* InputLayout::PosNormTex = nullptr;
 
 
-D3D10_INPUT_ELEMENT_DESC InputLayout::PosUVVertexDesc[] =
+D3D11_INPUT_ELEMENT_DESC InputLayout::PosUvVertexDesc[] =
 {
-	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 }
+	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 };
 
-D3D10_INPUT_ELEMENT_DESC InputLayout::PosColorVertexDesc[] =
+D3D11_INPUT_ELEMENT_DESC InputLayout::PosNormalUvVertexDesc[] =
 {
-	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0 },
-	{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0 }
+	{ "POSITION", 0,  DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	{ "NORMAL",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	
+
 };
 
 
-D3D10_INPUT_ELEMENT_DESC InputLayout::SkyboxVertexDesc[] =
+D3D11_INPUT_ELEMENT_DESC InputLayout::PosColorVertexDesc[] =
 {
-	{ "POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D10_INPUT_PER_VERTEX_DATA, 0 }
+	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+};
+
+
+D3D11_INPUT_ELEMENT_DESC InputLayout::SkyboxVertexDesc[] =
+{
+	{ "POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 }
 };
 
 
 
-void InputLayout::InitAll(ID3D10Device* device)
+void InputLayout::InitAll(ID3D11Device* device)
 {
-	device->CreateInputLayout(PosUVVertexDesc, 2, Shaders::BLOB_VS_SimpleProjection->GetBufferPointer(), Shaders::BLOB_VS_SimpleProjection->GetBufferSize(), &PosTex);
+	device->CreateInputLayout(PosUvVertexDesc, 2, Shaders::BLOB_VS_SimpleProjection->GetBufferPointer(), Shaders::BLOB_VS_SimpleProjection->GetBufferSize(), &PosTex);
 	device->CreateInputLayout(PosColorVertexDesc, 2, Shaders::BLOB_VS_SimpleProjectionColor->GetBufferPointer(), Shaders::BLOB_VS_SimpleProjectionColor->GetBufferSize(), &PosColor);
 	device->CreateInputLayout(SkyboxVertexDesc, 1, Shaders::BLOB_VS_SkyBox->GetBufferPointer(), Shaders::BLOB_VS_SkyBox->GetBufferSize(), &Skybox);
+	device->CreateInputLayout(PosNormalUvVertexDesc, 3, Shaders::BLOB_VS_DirectionalLight->GetBufferPointer(), Shaders::BLOB_VS_DirectionalLight->GetBufferSize(), &PosNormTex);
+
 }
 
 

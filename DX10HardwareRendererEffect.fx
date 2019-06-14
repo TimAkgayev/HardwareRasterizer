@@ -11,37 +11,90 @@ SamplerState triLinearSampler
 };
 
 
+
+
 cbuffer ProjectionMatrices : register (b0)
 {
-	matrix World;
+	
 	matrix View;
 	matrix Projection;
 }
 
-struct PS_INPUT_POS_TEX
+cbuffer WorldMatrices : register (b1)
+{
+	matrix World;
+}
+
+cbuffer DirectionalLight : register (b2)
+{
+	float3 LightDirection;
+	float4 LightColor;
+};
+
+
+
+
+struct TexturedVertex
 {
 	float4 Pos : SV_POSITION;
 	float2 UV : TEXCOORD0;
 
 };
 
-struct PS_INPUT_SKYBOX
+struct SkyboxVertex
 {
 	float4 Pos : SV_POSITION;
 	float3 UV : TEXCOORD;
 };
 
-struct PS_INPUT_POS_COLOR
+struct ColorVertex
 {
 	float4 Pos : SV_POSITION;
 	float4 Color : COLOR0;
 };
 
+struct TexturedLitVertex
+{
+	float4 Pos :   SV_POSITION;
+	float3 Normal: NORMAL;
+	float2 Uv:     TEXCOORD;
+};
 
-PS_INPUT_POS_TEX VS_SIMPLEPROJECTION(float4 Pos : POSITION, float2 UV : TEXCOORD0)
+
+TexturedLitVertex VS_DirectionalLight(float4 Pos : POSITION, float3 Normal : NORMAL, float2 Uv : TEXCOORD0)
+{
+	TexturedLitVertex vsOut = (TexturedLitVertex)0;
+
+	vsOut.Pos = mul(Pos, World);
+	vsOut.Pos = mul(vsOut.Pos, View);
+	vsOut.Pos = mul(vsOut.Pos, Projection);
+
+	vsOut.Normal = mul(Normal, (float3x3)World);
+	vsOut.Uv = Uv;
+	
+	return vsOut;
+}
+
+float4 PS_DirectionalLight(TexturedLitVertex psInput) : SV_Target
+{
+	psInput.Normal = normalize(psInput.Normal);
+
+	float4 finalColor = 0;
+
+	//do NdotL lighting
+	float4 lcolor = { 1.0f, 1.0f, 1.0f, 1.0f };
+	finalColor += saturate(dot((float3)LightDirection, psInput.Normal) * lcolor * txDiffuse.Sample(triLinearSampler, psInput.Uv));
+	
+	finalColor.a = 1;
+	return finalColor;
+	
+}
+
+
+TexturedVertex VS_TexturedVertex(float4 Pos : POSITION, float2 UV : TEXCOORD0)
 {
 
-	PS_INPUT_POS_TEX psInput = (PS_INPUT_POS_TEX)0;
+	TexturedVertex psInput = (TexturedVertex)0;
 
 	psInput.Pos = mul(Pos, World);
 	psInput.Pos = mul(psInput.Pos, View);
@@ -53,14 +106,15 @@ PS_INPUT_POS_TEX VS_SIMPLEPROJECTION(float4 Pos : POSITION, float2 UV : TEXCOORD
 }
 
 
-float4 PS_SIMPLETEXTURE(PS_INPUT_POS_TEX psInput) : SV_Target
+float4 PS_TexturedVertex(TexturedVertex psInput) : SV_Target
 {
+	//return float4(255.0f, 0.0f, 0.0f, 255.0f);
 	return txDiffuse.Sample(triLinearSampler, psInput.UV);
 }
 
-PS_INPUT_POS_COLOR VS_SIMPLEPROJECTIONCOLOR (float4 Pos: POSITION, float4 Color : COLOR)
+ColorVertex VS_ColorVertex (float4 Pos: POSITION, float4 Color : COLOR)
 {
-	PS_INPUT_POS_COLOR psInput = (PS_INPUT_POS_COLOR)0;
+	ColorVertex psInput = (ColorVertex)0;
 	psInput.Pos = mul(Pos, World);
 	psInput.Pos = mul(psInput.Pos, View);
 	psInput.Pos = mul(psInput.Pos, Projection);
@@ -70,15 +124,15 @@ PS_INPUT_POS_COLOR VS_SIMPLEPROJECTIONCOLOR (float4 Pos: POSITION, float4 Color 
 }
 
 
-float4 PS_SIMPLECOLOR(PS_INPUT_POS_COLOR psInput) : SV_Target
+float4 PS_ColorVertex(ColorVertex psInput) : SV_Target
 {
 	return psInput.Color;
 }
 
 
-PS_INPUT_SKYBOX VS_SKYBOX(float3 Pos: POSITION)
+SkyboxVertex VS_Skybox(float3 Pos: POSITION)
 {
-	PS_INPUT_SKYBOX vsout = (PS_INPUT_SKYBOX)0;
+	SkyboxVertex vsout = (SkyboxVertex)0;
 	
 
 	vsout.Pos = mul(float4(Pos,1.0f), World);
@@ -90,9 +144,8 @@ PS_INPUT_SKYBOX VS_SKYBOX(float3 Pos: POSITION)
 
 }
 
-float4 PS_SKYBOX(PS_INPUT_SKYBOX psin) : SV_Target
+float4 PS_Skybox(SkyboxVertex psin) : SV_Target
 {
-	//return float4(255, 0, 0, 255);
 
 	return skyCubeMap.Sample(triLinearSampler, psin.UV);
 }

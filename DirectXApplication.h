@@ -1,9 +1,8 @@
 #pragma once
-#include <windows.h>
-#include "d3dcommon.h"
+
+#include "common_includes.h"
 #include "GameTimer.h"
-#include <string>
-#include <vector>
+
 
 using namespace DirectX;
 
@@ -12,6 +11,8 @@ class DirectXApplication
 {
 public:
 	DirectXApplication(HINSTANCE hInstance);
+	DirectXApplication(const DirectXApplication& rhs) = delete;
+	DirectXApplication& operator=(const DirectXApplication& rhs) = delete;
 	virtual ~DirectXApplication();
 
 	virtual void initApp();
@@ -41,19 +42,20 @@ protected:
 	std::wstring mMainWndCaption;
 
 
-	ID3D10Device*		 mD3D10Device;
-	ID3D10Texture2D*     mD3D10DepthStencilTexture;
-	ID3D10DepthStencilView* mD3D10DepthStencilView;
-	IDXGISwapChain*		 mD3D10SwapChain;
-	ID3D10RasterizerState* mRasterizerStateSolid;
-	
-	
-	ID3D10BlendState*    mD3D10BlendState;
-	
-	ID3D10SamplerState*  mD3D10SamplerState;
+	ID3D11Device*		 mD3DDevice;
+	ID3D11Texture2D*     mD3D11DepthStencilTexture;
+	ID3D11DepthStencilView* mD3D11DepthStencilView;
+	IDXGISwapChain*		 mD3D11SwapChain;
+	ID3D11RasterizerState* mRasterizerStateSolid;
+	ID3D11DeviceContext* mDeviceContext;
+	ID3D11DepthStencilState * mDepthStencilState;
 
-	ID3D10RenderTargetView*     mD3D10RenderTargetView;
-	D3D10_VIEWPORT				mD3D10Viewport;
+	ID3D11BlendState*    mD3D11BlendState;
+	
+	ID3D11SamplerState*  mD3D11SamplerState;
+
+	ID3D11RenderTargetView*     mD3D11RenderTargetView;
+	D3D11_VIEWPORT				mD3D11Viewport;
 
 
 };

@@ -1,6 +1,5 @@
 #pragma once
-#include <DirectXMath.h>
-#include <d3d10.h>
+#include "common_includes.h"
 using namespace DirectX;
 
 namespace Vertex {
@@ -21,5 +20,12 @@ namespace Vertex {
 	struct Skybox
 	{
 		XMFLOAT3 pos;
+	};
+
+	struct PosNormTex
+	{
+		XMFLOAT3 pos;
+		XMFLOAT3 norm;
+		XMFLOAT2 uv;
 	};
 };

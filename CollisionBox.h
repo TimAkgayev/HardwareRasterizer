@@ -25,8 +25,9 @@ public:
 	XMVECTOR GetXAxis() const;
 	XMVECTOR GetYAxis() const;
 	XMVECTOR GetZAxis() const;
-	XMVECTOR GetExtents() const;
+	XMFLOAT3 GetExtents() const;
 	XMVECTOR GetCenter() const;
+	std::vector<XMVECTOR> GetVertices() const;
 
 	void SetPosition(XMFLOAT3 pos);
 
@@ -48,10 +49,15 @@ protected:
 
 	XMVECTOR mCenter;
 	
+	std::vector<XMVECTOR> mProjectionAxesShape1;
+	std::vector<XMVECTOR> mProjectionAxesShape2;
+
 private:
 	static std::vector<CollisionBox*> mCollisionBoxList;
+	bool mCheckOverlapOnAxis(const XMVECTOR& boxCenter, const XMVECTOR& xAxis, const XMVECTOR& yAxis, const XMVECTOR& zAxis, XMFLOAT3 xyzExtents, const XMVECTOR& projectionAxis);
 
 	bool mCheckForCollision(const CollisionBox& box);
-	bool mGetSeparatingPlane(const XMVECTOR& RPos, const XMVECTOR& Plane, const XMVECTOR& AxisX, const XMVECTOR& AxisY, const XMVECTOR& AxisZ, const XMVECTOR& Extents);
+
+	void mGetAxes(const CollisionBox& box1, const CollisionBox& box2);
 
 };

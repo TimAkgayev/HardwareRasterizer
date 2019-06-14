@@ -1,5 +1,5 @@
 #pragma once
-#include "d3dcommon.h"
+#include "common_includes.h"
 #include "Interface_LinkSystem.h"
 using namespace DirectX;
 

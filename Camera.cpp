@@ -17,7 +17,7 @@ Camera::Camera()
 	XMFLOAT3 posF = { 0.0F, 300.0f, 0.0f };
 	mPosition = XMLoadFloat3(&posF);
 
-	mProjectionMatrix = XMMatrixPerspectiveFovLH(D3DX_PI / 4, 4.0f/3.0f, 0.01f, 100000.0f);
+	mProjectionMatrix = XMMatrixPerspectiveFovLH(3.14159265f / 4.0f, 4.0f/3.0f, 10.0f, 1000000000.0f);
 
 }
 
