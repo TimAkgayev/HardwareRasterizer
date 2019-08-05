@@ -3,6 +3,7 @@
 #include <DirectXMath.h>
 #include "CollisionBox.h"
 #include "Terrain.h"
+#include "GameTimer.h"
 
 using namespace DirectX;
 
@@ -17,6 +18,7 @@ public:
 	void Update(float dt);
 
 	void Move(XMVECTOR direction);
+	void Jump();
 
 	XMFLOAT3 GetPosition()
 	{
@@ -36,4 +38,10 @@ protected:
 	Terrain* pAssociatedTerrain;
 	float mMoveSpeed;
 	float mTurnSpeed;
+
+	// Jump values
+	bool mIsAirborne;
+	float mJumpVelocity; 
+	float mJumpTime;
+	XMVECTOR mJumpStartPos;
 };

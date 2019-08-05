@@ -27,9 +27,10 @@ public:
 	XMVECTOR GetZAxis() const;
 	XMFLOAT3 GetExtents() const;
 	XMVECTOR GetCenter() const;
+	void     SetCenter(XMFLOAT3 pos);
 	std::vector<XMVECTOR> GetVertices() const;
 
-	void SetPosition(XMFLOAT3 pos);
+	
 
 public:
 

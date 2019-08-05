@@ -316,7 +316,7 @@ std::vector<XMVECTOR> CollisionBox::GetVertices() const
 	return std::vector<XMVECTOR>(vertex, vertex + 8);
 }
 
-void CollisionBox::SetPosition(XMFLOAT3 newPos)
+void CollisionBox::SetCenter(XMFLOAT3 newPos)
 {
 	mCenter = XMLoadFloat3(&newPos);
 
@@ -401,6 +401,262 @@ bool CollisionBox::checkForCollision()
 
 	return false;
 }
+
+/*
+
+
+bool check_collision(const CollisionBox& boxA, const CollisionBox& boxB)
+{
+// Convenience variables.
+XMVECTOR const& center0 = boxA.GetCenter();
+XMVECTOR Axes0[3] = { boxA.GetXAxis(), boxA.GetYAxis(), boxA.GetZAxis() };
+float Extents0[3] = { boxA.GetExtents().x, boxA.GetExtents().y, boxA.GetExtents().z };
+
+XMVECTOR const& center1 = boxB.GetCenter();
+XMVECTOR Axes1[3] = {boxB.GetXAxis(), boxB.GetYAxis(), boxB.GetZAxis());
+float Extents1[3] = { boxB.GetExtents().x, boxB.GetExtents().y, boxB.GetExtents().z };
+
+
+const float cutoff = 1.0f;
+bool existsParallelPair = false;
+
+// Compute difference of box centers.
+XMVECTOR D = center1 - center0;
+
+float dotAB[3][3];       // dot01[i][j] = Dot(A0[i],A1[j]) = A1[j][i]
+float absDotAB[3][3];    // |dot01[i][j]|
+float dotDA[3];      // Dot(D, A0[i])
+float radius0, radius1, Radius;     // interval radii and distance between centers
+float radius_sum;					// r0 + r1
+
+// Test for separation on the axis C0 + t*A0[0].
+for (int i = 0; i < 3; ++i)
+{
+XMVECTOR dot = XMVector3Dot(Axes0[0], Axes1[i]);
+XMFLOAT3 dotF;
+XMStoreFloat3(&dotF, dot);
+
+dotAB[0][i] = dotF.x;
+absDotAB[0][i] = std::abs(dotAB[0][i]);
+
+if (absDotAB[0][i] > cutoff)
+{
+existsParallelPair = true;
+}
+}
+
+XMVECTOR temp = XMVector3Dot(D, Axes0[0]);
+XMFLOAT3 tempF;
+XMStoreFloat3(&tempF, temp);
+dotDA[0] = tempF.x;
+
+Radius = std::abs(dotDA[0]);
+radius1 = Extents1[0] * absDotAB[0][0] + Extents1[1] * absDotAB[0][1] + Extents1[2] * absDotAB[0][2];
+radius_sum = Extents0[0] + radius1;
+
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[1].
+for (int i = 0; i < 3; ++i)
+{
+XMVECTOR dot = XMVector3Dot(Axes0[1], Axes1[i]);
+XMFLOAT3 dotF;
+XMStoreFloat3(&dotF, dot);
+
+dotAB[1][i] = dotF.x;
+absDotAB[1][i] = std::abs(dotAB[1][i]);
+
+if (absDotAB[1][i] > cutoff)
+{
+existsParallelPair = true;
+}
+}
+
+temp = XMVector3Dot(D, Axes0[1]);
+XMStoreFloat3(&tempF, temp);
+dotDA[1] = tempF.x;
+
+Radius = std::abs(dotDA[1]);
+radius1 = Extents1[0] * absDotAB[1][0] + Extents1[1] * absDotAB[1][1] + Extents1[2] * absDotAB[1][2];
+radius_sum = Extents0[1] + radius1;
+
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[2].
+for (int i = 0; i < 3; ++i)
+{
+XMVECTOR dot = XMVector3Dot(Axes0[2], Axes1[i]);
+XMFLOAT3 dotF;
+XMStoreFloat3(&dotF, dot);
+
+dotAB[2][i] = dotF.x;
+absDotAB[2][i] = std::abs(dotAB[2][i]);
+
+if (absDotAB[2][i] > cutoff)
+{
+existsParallelPair = true;
+}
+}
+
+temp = XMVector3Dot(D, Axes0[2]);
+XMStoreFloat3(&tempF, temp);
+dotDA[2] = tempF.x;
+
+Radius = std::abs(dotDA[2]);
+radius1 = Extents1[0] * absDotAB[2][0] + Extents1[1] * absDotAB[2][1] + Extents1[2] * absDotAB[2][2];
+radius_sum = Extents0[2] + radius1;
+
+if (Radius > radius_sum)
+{
+return false;
+}
+
+
+// Test for separation on the axis C0 + t*A1[0].
+temp = XMVector3Dot(D, Axes1[0]);
+XMStoreFloat3(&tempF, temp);
+
+Radius = std::abs(tempF.x);
+radius0 = Extents0[0] * absDotAB[0][0] + Extents0[1] * absDotAB[1][0] + Extents0[2] * absDotAB[2][0];
+radius_sum = radius0 + Extents1[0];
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A1[1].
+temp = XMVector3Dot(D, Axes1[1]);
+XMStoreFloat3(&tempF, temp);
+
+Radius = std::abs(tempF.x);
+radius0 = Extents0[0] * absDotAB[0][1] + Extents0[1] * absDotAB[1][1] + Extents0[2] * absDotAB[2][1];
+radius_sum = radius0 + Extents1[1];
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A1[2].
+temp = XMVector3Dot(D, Axes1[2]);
+XMStoreFloat3(&tempF, temp);
+
+Radius = std::abs(tempF.x);
+radius0 = Extents0[0] * absDotAB[0][2] + Extents0[1] * absDotAB[1][2] + Extents0[2] * absDotAB[2][2];
+radius_sum = radius0 + Extents1[2];
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// At least one pair of box axes was parallel, so the separation is
+// effectively in 2D.  The edge-edge axes do not need to be tested.
+if (existsParallelPair)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[0]xA1[0].
+Radius = std::abs(dotDA[2] * dotAB[1][0] - dotDA[1] * dotAB[2][0]);
+radius0 = Extents0[1] * absDotAB[2][0] + Extents0[2] * absDotAB[1][0];
+radius1 = Extents1[1] * absDotAB[0][2] + Extents1[2] * absDotAB[0][1];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[0]xA1[1].
+Radius = std::abs(dotDA[2] * dotAB[1][1] - dotDA[1] * dotAB[2][1]);
+radius0 = Extents0[1] * absDotAB[2][1] + Extents0[2] * absDotAB[1][1];
+radius1 = Extents1[0] * absDotAB[0][2] + Extents1[2] * absDotAB[0][0];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[0]xA1[2].
+Radius = std::abs(dotDA[2] * dotAB[1][2] - dotDA[1] * dotAB[2][2]);
+radius0 = Extents0[1] * absDotAB[2][2] + Extents0[2] * absDotAB[1][2];
+radius1 = Extents1[0] * absDotAB[0][1] + Extents1[1] * absDotAB[0][0];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+
+
+// Test for separation on the axis C0 + t*A0[1]xA1[0].
+Radius = std::abs(dotDA[0] * dotAB[2][0] - dotDA[2] * dotAB[0][0]);
+radius0 = Extents0[0] * absDotAB[2][0] + Extents0[2] * absDotAB[0][0];
+radius1 = Extents1[1] * absDotAB[1][2] + Extents1[2] * absDotAB[1][1];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[1]xA1[1].
+Radius = std::abs(dotDA[0] * dotAB[2][1] - dotDA[2] * dotAB[0][1]);
+radius0 = Extents0[0] * absDotAB[2][1] + Extents0[2] * absDotAB[0][1];
+radius1 = Extents1[0] * absDotAB[1][2] + Extents1[2] * absDotAB[1][0];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[1]xA1[1].
+Radius = std::abs(dotDA[0] * dotAB[2][2] - dotDA[2] * dotAB[0][2]);
+radius0 = Extents0[0] * absDotAB[2][2] + Extents0[2] * absDotAB[0][2];
+radius1 = Extents1[0] * absDotAB[1][1] + Extents1[1] * absDotAB[1][0];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[1]xA1[1].
+Radius = std::abs(dotDA[1] * dotAB[0][0] - dotDA[0] * dotAB[1][0]);
+radius0 = Extents0[0] * absDotAB[1][0] + Extents0[1] * absDotAB[0][0];
+radius1 = Extents1[1] * absDotAB[2][2] + Extents1[2] * absDotAB[2][1];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+
+// Test for separation on the axis C0 + t*A0[1]xA1[1].
+Radius = std::abs(dotDA[1] * dotAB[0][1] - dotDA[0] * dotAB[1][1]);
+radius0 = Extents0[0] * absDotAB[1][1] + Extents0[1] * absDotAB[0][1];
+radius1 = Extents1[0] * absDotAB[2][2] + Extents1[2] * absDotAB[2][0];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+
+
+// Test for separation on the axis C0 + t*A0[1]xA1[1].
+Radius = std::abs(dotDA[1] * dotAB[0][2] - dotDA[0] * dotAB[1][2]);
+radius0 = Extents0[0] * absDotAB[1][2] + Extents0[1] * absDotAB[0][2];
+radius1 = Extents1[0] * absDotAB[2][1] + Extents1[1] * absDotAB[2][0];
+radius_sum = radius0 + radius1;
+if (Radius > radius_sum)
+{
+return false;
+}
+}
+
+
+*/
+
 
 
 bool CollisionBox::mCheckForCollision(const CollisionBox& box)

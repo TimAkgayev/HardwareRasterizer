@@ -14,7 +14,7 @@ public:
 	
 
 	void CreateFromHeightMap(ID3D11Device* device, std::wstring pathToHeightmap, float floorScale = 1.0f, float heightScale = 1.0f);
-	void GetHeightAtPosition(XMFLOAT3& playerPos, float** height);
+	void GetHeightAtPosition(XMFLOAT3& playerPos, float& outHeight);
 
 	void GetBoundingCoordinates(XMFLOAT2* lowerLeft, XMFLOAT2* upperRight);
 	void GetBoundPoints(XMFLOAT3**, XMFLOAT3**, XMFLOAT3**, XMFLOAT3**);

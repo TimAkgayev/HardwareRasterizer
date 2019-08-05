@@ -31,16 +31,18 @@ CharacterController::CharacterController(Terrain* terrain)
 
 	XMFLOAT3 playerPosf = { playerPosX, 0.0f, playerPosZ };
 	
-	float* playerPosY = new float;
-	pAssociatedTerrain->GetHeightAtPosition(playerPosf, &playerPosY);
+	float playerPosY;
+	pAssociatedTerrain->GetHeightAtPosition(playerPosf, playerPosY);
 
-	XMVECTOR finalPosition = { playerPosX, *playerPosY, playerPosZ, 0.0f };
-	
-	mCollisionBox.init(XMFLOAT3(playerPosX, *playerPosY, playerPosZ), XMLoadFloat3(&mCam.GetRightVector()), 10, 10);
-	mCam.SetPosition(XMFLOAT3(playerPosX, *playerPosY + 400, playerPosZ));
+	XMVECTOR finalPosition = { playerPosX, playerPosY, playerPosZ, 0.0f };
 
-	delete playerPosY;
-	playerPosY = nullptr;
+	mCollisionBox.init(XMFLOAT3(playerPosX, playerPosY, playerPosZ), XMLoadFloat3(&mCam.GetRightVector()), 10, 10);
+	mCam.SetPosition(XMFLOAT3(playerPosX, playerPosY + 400, playerPosZ));
+
+	//not jumping atm
+	mIsAirborne = false;
+	mJumpVelocity = 150.0f;
+
 
 }
 
@@ -69,14 +71,12 @@ void CharacterController::Move(XMVECTOR direction)
 	XMFLOAT3 boxPosAfterF;
 	XMStoreFloat3(&boxPosAfterF, boxPosAfterV);
 
-	float* playerPosY = new float;
-	pAssociatedTerrain->GetHeightAtPosition(boxPosAfterF, &playerPosY);
+	float playerPosY;
+	pAssociatedTerrain->GetHeightAtPosition(boxPosAfterF, playerPosY);
 
-	XMVECTOR finalMoveVector = { boxPosAfterF.x, *playerPosY, boxPosAfterF.z, 0.0f };
+	XMVECTOR finalMoveVector = { boxPosAfterF.x, playerPosY, boxPosAfterF.z, 0.0f };
 	finalMoveVector = finalMoveVector - boxPosV;
 
-	delete playerPosY;
-	playerPosY = nullptr;
 
 	XMVECTOR camPosFinalV = XMLoadFloat3(&mCam.GetPosition()) + finalMoveVector;
 	XMVECTOR boxPosFinalV = mCollisionBox.GetCenter() + finalMoveVector;
@@ -90,11 +90,39 @@ void CharacterController::Move(XMVECTOR direction)
 	if (camPosFinalF.y < 400)
 		int x = 0;
 
-	mCam.SetPosition(camPosFinalF);
-	mCollisionBox.SetPosition(boxPosFinalF);
+
+	if (mIsAirborne)
+	{
+		//only set the x and z coordinates and leave the y alone
+		XMVECTOR boxPosition = mCollisionBox.GetCenter();
+		XMFLOAT3 boxPositionF;
+		XMStoreFloat3(&boxPositionF, boxPosition);
+
+		XMFLOAT3 camPosFinalNoYF = { camPosFinalF.x, mCam.GetPosition().y, camPosFinalF.z };
+		XMFLOAT3 boxPosFinalNoYF = { boxPosFinalF.x, boxPositionF.y, boxPosFinalF.z };
+
+		mCam.SetPosition(camPosFinalNoYF);
+		mCollisionBox.SetCenter(boxPosFinalNoYF);
+	}
+	else
+	{
+		mCam.SetPosition(camPosFinalF);
+		mCollisionBox.SetCenter(boxPosFinalF);
+	}
 
 	
 
+}
+
+void CharacterController::Jump()
+{
+	//start timer and go through the curve
+	if (!mIsAirborne)
+	{
+		mJumpTime = 0.0f;
+		mJumpStartPos = mCollisionBox.GetCenter();
+		mIsAirborne = true;
+	}
 }
 
 void CharacterController::SetMoveSpeed(float speed)
@@ -120,6 +148,8 @@ void CharacterController::Update(float dt)
 	XMVECTOR moveDirRight = XMVectorSet(mCam.GetRightVector().x, 0, mCam.GetRightVector().z, 0);
 
 	
+	if (GetAsyncKeyState(VK_SPACE))
+		Jump();
 
 
 	if (GetAsyncKeyState(0x57)) //W key
@@ -162,6 +192,63 @@ void CharacterController::Update(float dt)
 		mCam.Yaw(1 * dt*mTurnSpeed);
 	}
 	
+
+	//jump
+	if (mIsAirborne)
+	{
+	
+		mJumpTime += dt;
+
+		XMFLOAT3 velF = { 0.0f, mJumpVelocity, 0.0f };
+		XMVECTOR vel = XMLoadFloat3(&velF);
+
+		XMFLOAT3 gravF = { 0.0f, -9.8f, 0.0f };
+		XMVECTOR grav = XMLoadFloat3(&gravF);
+
+		float t = mJumpTime*30;
+		XMVECTOR currentPos = mJumpStartPos + vel * t + 0.5*grav*t*t;
+
+		XMFLOAT3 currentPosF;
+		XMStoreFloat3(&currentPosF, currentPos);
+
+
+
+		//every frame check to make sure that we're not hitting land
+		float currentTerrainHeight;
+		pAssociatedTerrain->GetHeightAtPosition(currentPosF, currentTerrainHeight);
+
+		if (currentTerrainHeight >= currentPosF.y)
+		{
+			mIsAirborne = false;
+			return;
+		}
+
+		else
+		{
+
+
+			
+			XMVECTOR boxPos = mCollisionBox.GetCenter();
+			XMVECTOR posDiff = currentPos - boxPos;
+			XMFLOAT3 boxPosF;
+			XMStoreFloat3(&boxPosF, boxPos);
+			XMFLOAT3 camPosF = mCam.GetPosition();
+			XMVECTOR camPos = XMLoadFloat3(&camPosF);
+			XMVECTOR newCamPos = camPos + posDiff;
+			XMFLOAT3 newCamPosF;
+			XMStoreFloat3(&newCamPosF, newCamPos);
+
+			XMFLOAT3 finalBoxPos = { boxPosF.x, currentPosF.y, boxPosF.z };
+
+			mCollisionBox.SetCenter(finalBoxPos);
+			mCam.SetPosition(XMFLOAT3(mCam.GetPosition().x, newCamPosF.y, mCam.GetPosition().z));
+		}
+	
+
+	}
+
+
+
 
 }
 

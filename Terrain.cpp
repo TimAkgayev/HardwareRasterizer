@@ -355,7 +355,7 @@ void Terrain::SetTexture(std::wstring texturePath)
 	HRESULT hr = CreateWICTextureFromFile(mD3DDevice, texturePath.c_str(), NULL, &mTextureResourceView);
 }
 
-void Terrain::GetHeightAtPosition(XMFLOAT3& playerPos, float** OutHeight)
+void Terrain::GetHeightAtPosition(XMFLOAT3& playerPos, float& OutHeight)
 {
 	
 
@@ -532,7 +532,7 @@ void Terrain::GetHeightAtPosition(XMFLOAT3& playerPos, float** OutHeight)
 	if (finalPlayerPosf.y != 0)
 		int x = 0;
 
-	**OutHeight = finalPlayerPosf.y;
+	OutHeight = finalPlayerPosf.y;
 	
 
 /*
