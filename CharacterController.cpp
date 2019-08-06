@@ -196,28 +196,36 @@ void CharacterController::Update(float dt)
 	//jump
 	if (mIsAirborne)
 	{
-	
+		//increment jump timer
 		mJumpTime += dt;
 
+		//set velocity vector
 		XMFLOAT3 velF = { 0.0f, mJumpVelocity, 0.0f };
 		XMVECTOR vel = XMLoadFloat3(&velF);
 
+		//set gravity vector
 		XMFLOAT3 gravF = { 0.0f, -9.8f, 0.0f };
 		XMVECTOR grav = XMLoadFloat3(&gravF);
 
+		//projectile motion equation 
+		//rf = ri + vi*t = 1/2*g*t^2
 		float t = mJumpTime*30;
-		XMVECTOR currentPos = mJumpStartPos + vel * t + 0.5*grav*t*t;
+		XMVECTOR posAfterJump = mJumpStartPos + vel * t + 0.5*grav*t*t;
 
-		XMFLOAT3 currentPosF;
-		XMStoreFloat3(&currentPosF, currentPos);
+
+		XMFLOAT3 posAfterJumpF;
+		XMStoreFloat3(&posAfterJumpF, posAfterJump);
 
 
 
 		//every frame check to make sure that we're not hitting land
 		float currentTerrainHeight;
-		pAssociatedTerrain->GetHeightAtPosition(currentPosF, currentTerrainHeight);
+		XMVECTOR currentPosition = mCollisionBox.GetCenter();
+		XMFLOAT3 currentPositionF;
+		XMStoreFloat3(&currentPositionF, currentPosition);
+		pAssociatedTerrain->GetHeightAtPosition(currentPositionF, currentTerrainHeight);
 
-		if (currentTerrainHeight >= currentPosF.y)
+		if (currentTerrainHeight >= posAfterJumpF.y)
 		{
 			mIsAirborne = false;
 			return;
@@ -227,9 +235,9 @@ void CharacterController::Update(float dt)
 		{
 
 
-			
+			//find the difference between current box position and position after the jump and offset the camera by that difference
 			XMVECTOR boxPos = mCollisionBox.GetCenter();
-			XMVECTOR posDiff = currentPos - boxPos;
+			XMVECTOR posDiff = posAfterJump - boxPos;
 			XMFLOAT3 boxPosF;
 			XMStoreFloat3(&boxPosF, boxPos);
 			XMFLOAT3 camPosF = mCam.GetPosition();
@@ -238,7 +246,7 @@ void CharacterController::Update(float dt)
 			XMFLOAT3 newCamPosF;
 			XMStoreFloat3(&newCamPosF, newCamPos);
 
-			XMFLOAT3 finalBoxPos = { boxPosF.x, currentPosF.y, boxPosF.z };
+			XMFLOAT3 finalBoxPos = { boxPosF.x, posAfterJumpF.y, boxPosF.z };
 
 			mCollisionBox.SetCenter(finalBoxPos);
 			mCam.SetPosition(XMFLOAT3(mCam.GetPosition().x, newCamPosF.y, mCam.GetPosition().z));
