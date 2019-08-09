@@ -51,4 +51,5 @@ void InputLayout::DestroyAll()
 	ReleaseCOM(PosTex);
 	ReleaseCOM(PosColor);
 	ReleaseCOM(Skybox);
+	ReleaseCOM(PosNormTex);
 }
