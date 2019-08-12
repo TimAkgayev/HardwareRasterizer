@@ -10,7 +10,7 @@ using namespace DirectX;
 __declspec(align(16)) class CharacterController
 {
 public:
-	CharacterController(Terrain* terrain);
+	CharacterController(ID3D11DeviceContext* context, Terrain* terrain);
 	~CharacterController();
 
 	Camera& GetCamera();
@@ -27,11 +27,21 @@ public:
 		return centerF;
 	}
 
+	void* operator new(size_t i)
+	{
+		return _mm_malloc(i, 16);
+	}
+
+	void operator delete(void* p)
+	{
+		_mm_free(p);
+	}
+
 	void SetMoveSpeed(float speed);
 	void SetTurnSpeed(float anglesPerSecond);
 
 protected:
-
+	ID3D11DeviceContext* mDeviceContext;
 	CollisionBox mCollisionBox;
 	Camera mCam;
 

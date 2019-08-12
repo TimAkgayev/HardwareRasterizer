@@ -4,11 +4,6 @@ using namespace DirectX;
 
 namespace Vertex {
 
-	struct PosTex
-	{
-		XMFLOAT3 pos;
-		XMFLOAT2 uv;
-	};
 
 	struct PosColor
 	{

@@ -17,7 +17,7 @@ Camera::Camera()
 	XMFLOAT3 posF = { 0.0F, 300.0f, 0.0f };
 	mPosition = XMLoadFloat3(&posF);
 
-	mProjectionMatrix = XMMatrixPerspectiveFovLH(3.14159265f / 4.0f, 4.0f/3.0f, 10.0f, 1000000000.0f);
+	mProjectionMatrix = XMMatrixPerspectiveFovLH(3.14159265f / 4.0f, 4.0f/3.0f, 1.0f, 10000.0f);
 
 }
 
@@ -140,7 +140,7 @@ XMMATRIX Camera::GetViewTranslationMatrix() const
 	return matTranslate;
 }
 
-XMMATRIX Camera::Camera::GetViewRotationMatrix() const
+XMMATRIX Camera::GetViewRotationMatrix() const
 {
 	XMFLOAT4 row4F = { 0.0f, 0.0f, 0.0f, 1.0f };
 	XMVECTOR row4 = XMLoadFloat4(&row4F);

@@ -1,29 +1,40 @@
 #include "Object.h"
 #include <WICTextureLoader.h>
 #include "ConstantBuffers.h"
-#include "InputLayouts.h"
+#include "tinyobj\tinyobjloader\tiny_obj_loader.h"
 
 
-void Object::init(ID3D11Device * device, DirectX::XMFLOAT3 position, const Vertex::PosNormTex * vertexList, UINT numVertices, std::vector<UINT>& indexList, std::wstring texturePath, float scale)
+class index_comparator
 {
+public:
+	bool operator()(const tinyobj::index_t& lhv, const tinyobj::index_t& rhv) const
+	{
+		return std::tie(lhv.vertex_index, lhv.normal_index, lhv.texcoord_index) < std::tie(rhv.vertex_index, rhv.normal_index, rhv.texcoord_index);
+	}
+};
+
+Object::Object()
+{
+
+	mNoDoubleBlendDSS = nullptr;
+	mD3DDevice = nullptr;
+	mDeviceContext = nullptr;
+
+	mVB = nullptr;
+	mIB = nullptr;
+
+	mRasterizerStateWireframe = nullptr;
+	mTextureResourceView = nullptr;
+
+}
+
+void Object::Initialize(ID3D11Device * device, DirectX::XMFLOAT3 position, const Vertex::PosNormTex * vertexList, UINT numVertices, std::vector<UINT>& indexList, std::wstring texturePath, float scale)
+{
+	mScale = scale;
 	mPosition = position;
 
 	device->GetImmediateContext(&mDeviceContext);
 	mD3DDevice = device;
-
-
-	Vertex::PosNormTex* scaledVertices = new Vertex::PosNormTex[numVertices];
-
-	
-	for (UINT i = 0; i < numVertices; i++)
-	{
-
-		scaledVertices[i].pos = XMFLOAT3(vertexList[i].pos.x * scale, vertexList[i].pos.y * scale, vertexList[i].pos.z * scale);
-		scaledVertices[i].norm = vertexList[i].norm;
-		scaledVertices[i].uv = vertexList[i].uv;
-	}
-
-	std::vector<Vertex::PosNormTex> test(scaledVertices, scaledVertices + numVertices);
 
 
 	//create a vertex buffer
@@ -36,11 +47,8 @@ void Object::init(ID3D11Device * device, DirectX::XMFLOAT3 position, const Verte
 
 	D3D11_SUBRESOURCE_DATA InitData;
 	ZeroMemory(&InitData, sizeof(InitData));
-	InitData.pSysMem = scaledVertices;
+	InitData.pSysMem = vertexList;
 	mD3DDevice->CreateBuffer(&bufferDesc, &InitData, &mVB);
-
-	delete scaledVertices;
-	scaledVertices = nullptr;
 
 
 	//creat the index buffer
@@ -56,43 +64,56 @@ void Object::init(ID3D11Device * device, DirectX::XMFLOAT3 position, const Verte
 
 	mNumVertices = numVertices;
 	mNumIndices = indexList.size();
+
+
+	D3D11_DEPTH_STENCIL_DESC noDoubleBlendDesc;
+	noDoubleBlendDesc.DepthEnable = true;
+	noDoubleBlendDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	noDoubleBlendDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	noDoubleBlendDesc.StencilEnable = true;
+	noDoubleBlendDesc.StencilReadMask = 0xff;
+	noDoubleBlendDesc.StencilWriteMask = 0xff;
+	noDoubleBlendDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	noDoubleBlendDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	noDoubleBlendDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_INCR;
+	noDoubleBlendDesc.FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+	// We are not rendering backfacing polygons, so these settings do not matter.
+	noDoubleBlendDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	noDoubleBlendDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	noDoubleBlendDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_INCR;
+	noDoubleBlendDesc.BackFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+
+	mD3DDevice->CreateDepthStencilState(&noDoubleBlendDesc, &mNoDoubleBlendDSS);
+
 }
 
-void Object::draw()
+void Object::Draw()
 {
 	UINT stride = sizeof(Vertex::PosNormTex);
 	UINT offset = 0;
 
+
+
+	
 	ConstantBuffers::WorldMatrices worldBuffer;
-	worldBuffer.World = XMMatrixIdentity();
+	worldBuffer.World = XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
+	XMMATRIX scale = XMMatrixScaling(mScale, mScale, mScale);
+	worldBuffer.World = XMMatrixTranspose(XMMatrixMultiply(scale, worldBuffer.World));
 	mDeviceContext->UpdateSubresource(ConstantBuffers::WorldMatrixBuffer, 0, NULL, &worldBuffer, 0, 0);
 
-	ConstantBuffers::DirectionalLight dirLight;
-	XMVECTOR ldir = { -0.577f, 0.577f, -0.577f };
-	ldir = XMVector3Normalize(ldir);
-	XMStoreFloat3(&dirLight.LightDirection, ldir);
 
-	dirLight.LightColor = { 1.0f, 0.0f, 0.0f, 1.0f };
-
-	mDeviceContext->UpdateSubresource(ConstantBuffers::DirectionalLightBuffer, 0, NULL, &dirLight, 0, 0);
-
-
-
-	mDeviceContext->VSSetShader(Shaders::VS_DirectionalLight, NULL, 0);
-	mDeviceContext->PSSetShader(Shaders::PS_DirectionalLight, NULL, 0);
-	mDeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
-	mDeviceContext->PSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
-	mDeviceContext->VSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
-	mDeviceContext->PSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
-	mDeviceContext->VSSetConstantBuffers(2, 1, &ConstantBuffers::DirectionalLightBuffer);
-	mDeviceContext->PSSetConstantBuffers(2, 1, &ConstantBuffers::DirectionalLightBuffer);
 	mDeviceContext->PSSetShaderResources(0, 1, &mTextureResourceView);
-	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	mDeviceContext->IASetInputLayout(InputLayout::PosNormTex);
+
 	mDeviceContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
 	mDeviceContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
+
 	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
 
+}
+
+UINT Object::GetNumberOfIndices()
+{
+	return mNumIndices;
 }
 
 Object::~Object()
@@ -103,3 +124,4 @@ Object::~Object()
 	ReleaseCOM(mTextureResourceView);
 
 }
+

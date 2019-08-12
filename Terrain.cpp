@@ -2,7 +2,6 @@
 #include <WICTextureLoader.h>
 #include "ConstantBuffers.h"
 #include "Vertex.h"
-#include "InputLayouts.h"
 #include "Shaders.h"
 #include "ConstantBuffers.h"
 #include <limits>
@@ -15,6 +14,8 @@ Terrain::Terrain()
 	mDebugUpperBound.SetIsWireframe(true);
 	mDebugLowBound.SetIsWireframe(true);
 
+
+
 }
 
 Terrain::~Terrain()
@@ -23,60 +24,80 @@ Terrain::~Terrain()
 		delete mHeightMap;
 	mHeightMap = nullptr;
 
-	ReleaseCOM(mVB);
-	ReleaseCOM(mIB);
+}
+
+
+void Terrain::RenderShadowMap()
+{
+
+
 
 }
 
-void Terrain::draw()
+void Terrain::mDrawSceneForShadowMap()
 {
 	UINT stride = sizeof(Vertex::PosNormTex);
 	UINT offset = 0;
 
+	//update buffers
 	ConstantBuffers::WorldMatrices worldBuffer;
 	worldBuffer.World = XMMatrixIdentity();
 	mDeviceContext->UpdateSubresource(ConstantBuffers::WorldMatrixBuffer, 0, NULL, &worldBuffer, 0, 0);
 
-	ConstantBuffers::DirectionalLight dirLight;
-	XMVECTOR ldir = { -0.577f, 0.577f, -0.577f }; 
-	ldir = XMVector3Normalize(ldir);
-	XMStoreFloat3(&dirLight.LightDirection, ldir);
 
-	dirLight.LightColor = { 1.0f, 0.0f, 0.0f, 1.0f };
-
-	mDeviceContext->UpdateSubresource(ConstantBuffers::DirectionalLightBuffer, 0, NULL, &dirLight, 0, 0);
-
-	
 	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	mDeviceContext->VSSetShader(Shaders::VS_DirectionalLight, NULL, 0);
-	mDeviceContext->PSSetShader(Shaders::PS_DirectionalLight, NULL, 0);
-	mDeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
-	mDeviceContext->PSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
-	mDeviceContext->VSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
-	mDeviceContext->PSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
-	mDeviceContext->VSSetConstantBuffers(2, 1, &ConstantBuffers::DirectionalLightBuffer);
-	mDeviceContext->PSSetConstantBuffers(2, 1, &ConstantBuffers::DirectionalLightBuffer);
+	mDeviceContext->IASetVertexBuffers(0, 1, & mVB, &stride, &offset);
+	mDeviceContext->IASetIndexBuffer( mIB, DXGI_FORMAT_R32_UINT, 0);
+
+	mDeviceContext->DrawIndexed( mNumIndices, 0, 0);
+}
+
+void Terrain::Draw()
+{
+
+
+	UINT stride = sizeof(Vertex::PosNormTex);
+	UINT offset = 0;
+
+	//update buffers
+	ConstantBuffers::WorldMatrices worldBuffer;
+	ConstantBuffers::Material material;
+
+
+	worldBuffer.World = XMMatrixIdentity();
+
+	material.Ka = 0.0f;
+	material.Kd = 1.0f;
+	material.Ks = 0.0f;
+	material.A =  1.0f;
+
+
+	mDeviceContext->UpdateSubresource(ConstantBuffers::MaterialBuffer, 0, NULL, &material, 0, 0);
+	mDeviceContext->UpdateSubresource(ConstantBuffers::WorldMatrixBuffer, 0, NULL, &worldBuffer, 0, 0);
+
+	//set shader resources
 	mDeviceContext->PSSetShaderResources(0, 1, &mTextureResourceView);
-	mDeviceContext->IASetInputLayout(InputLayout::PosNormTex);
+
+	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	mDeviceContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
 	mDeviceContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
+
 	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
+	
+	/*
 
-	mDebugLBound.draw();
-	mDebugRBound.draw();
-	mDebugUpperBound.draw();
-	mDebugLowBound.draw();
+	Shaders::SimpleColorShader::Render(mDeviceContext,(Object*)&mDebugLBound); 
+	Shaders::SimpleColorShader::Render(mDeviceContext,(Object*)&mDebugRBound); 
+	Shaders::SimpleColorShader::Render(mDeviceContext,(Object*)&mDebugUpperBound); 
+	Shaders::SimpleColorShader::Render(mDeviceContext,(Object*)&mDebugLowBound); 
 
-	mDebugSmallLBound.draw();
-	mDebugSmallRBound.draw();
-	mDebugSmallUpperBound.draw();
-	mDebugSmallLowBound.draw();
-
+	Shaders::SimpleColorShader::Render(mDeviceContext,(Object*)&mDebugSmallLBound); 
+	Shaders::SimpleColorShader::Render(mDeviceContext,(Object*)&mDebugSmallRBound); 
+	Shaders::SimpleColorShader::Render(mDeviceContext,(Object*)&mDebugSmallUpperBound); 
+	Shaders::SimpleColorShader::Render(mDeviceContext,(Object*)&mDebugSmallLowBound); 
+	*/
 }
 
-void GetCorrectHeightAtPoint(float x, float y, float** height)
-{
-}
 
 void Terrain::CreateFromHeightMap(ID3D11Device* device, std::wstring pathToHeightmap, float floorScale, float heightScale)
 {
@@ -198,7 +219,7 @@ void Terrain::CreateFromHeightMap(ID3D11Device* device, std::wstring pathToHeigh
 		
 		//for each index triplet
 		int faceCount = 0;
-		for (int indIndex = 0; indIndex < mNumIndices; indIndex += 3)
+		for (UINT indIndex = 0; indIndex < mNumIndices; indIndex += 3)
 		{
 			
 			if ((indices[indIndex + 0] == vertIndex) || (indices[indIndex + 1] == vertIndex) || (indices[indIndex + 2] == vertIndex))
@@ -249,6 +270,7 @@ void Terrain::CreateFromHeightMap(ID3D11Device* device, std::wstring pathToHeigh
 
 	delete floorMesh;
 	floorMesh = nullptr;
+
 }
 
 
@@ -316,10 +338,10 @@ void Terrain::CreateCollisionBoxes()
 	lr.y = ll.y;
 
 
-	mBoxLeftBound.init(ll, ul, 200, 1500);
-	mBoxRightBound.init(ul, ur, 200, 1500);
-	mBoxLowBound.init(ur, lr, 200, 1500);
-	mBoxUpperBound.init(lr, ll, 200, 1500);
+	mBoxLeftBound.init(ll, ul);
+	mBoxRightBound.init(ul, ur);
+	mBoxLowBound.init(ur, lr);
+	mBoxUpperBound.init(lr, ll);
 
 	XMFLOAT3 wll, wur, wul, wlr;
 	wll.x = ll.x;
@@ -339,15 +361,20 @@ void Terrain::CreateCollisionBoxes()
 	wlr.z = lr.y;
 	
 
-	mDebugLBound.init(mD3DDevice, mBoxLeftBound.GetVertices(), XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
-	mDebugUpperBound.init(mD3DDevice, mBoxUpperBound.GetVertices(), XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
-	mDebugRBound.init(mD3DDevice, mBoxRightBound.GetVertices(), XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
-	mDebugLowBound.init(mD3DDevice, mBoxLowBound.GetVertices(), XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
+	mDebugLBound.Initialize(mD3DDevice, mBoxLeftBound.GetVertices(), XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
+	mDebugUpperBound.Initialize(mD3DDevice, mBoxUpperBound.GetVertices(), XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
+	mDebugRBound.Initialize(mD3DDevice, mBoxRightBound.GetVertices(), XMFLOAT4(255.0f, 0.0, 0.0f, 255.0f));
+	mDebugLowBound.Initialize(mD3DDevice, mBoxLowBound.GetVertices(), XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
 
-	mDebugSmallLBound.init(mD3DDevice, wll, 50.0f, 100.0f, XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
-	mDebugSmallUpperBound.init(mD3DDevice, wur, 50.0f, 100.0f, L"..\\HardwareRasterizer\\Textures\\grass.bmp");
-	mDebugSmallRBound.init(mD3DDevice, wul, 50.0f, 100.0f, L"..\\HardwareRasterizer\\Textures\\grass.bmp");
-	mDebugSmallLowBound.init(mD3DDevice, wlr, 50.0f, 100.0f, L"..\\HardwareRasterizer\\Textures\\grass.bmp");
+	mDebugSmallLBound.Initialize(mD3DDevice, wll, 50.0f, 100.0f, XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
+	mDebugSmallUpperBound.Initialize(mD3DDevice, wur, 50.0f, 100.0f, XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
+	mDebugSmallRBound.Initialize(mD3DDevice, wul, 50.0f, 100.0f, XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
+	mDebugSmallLowBound.Initialize(mD3DDevice, wlr, 50.0f, 100.0f, XMFLOAT4(0.0f, 1.0f, 1.0f, 255.0f));
+}
+
+void Terrain::SetHeightMap(std::wstring heightmapPath)
+{
+	mHeightMap = new SoftwareBitmap::Bitmap(heightmapPath);
 }
 
 void Terrain::SetTexture(std::wstring texturePath)
@@ -358,7 +385,6 @@ void Terrain::SetTexture(std::wstring texturePath)
 void Terrain::GetHeightAtPosition(XMFLOAT3& playerPos, float& OutHeight)
 {
 	
-
 	int vertexArrayHeight = mHeightMap->GetHeight();
 	int vertexArrayWidth = mHeightMap->GetWidth();
 

@@ -2,27 +2,18 @@
 #include <WICTextureLoader.h>
 
 Box::Box()
-	: mNumVertices(0), mNumFaces(0), mDeviceContext(0), mVB(0), mIB(0), mIsWireframe(false), mTextureResourceView(nullptr), mIsPretransformed(false)
+	:mIsWireframe(false), mIsPretransformed(false)
 {
 	
 }
 
 Box::~Box()
 {
-	if (mVB)
-	{
-		mVB->Release();
-		mVB = nullptr;
-	}
-	if (mIB)
-	{
-		mIB->Release();
-		mIB = nullptr;
-	}
+	
 }
 
 
-void Box::init(ID3D11Device* device, XMFLOAT3 position, float width, float height, XMFLOAT4 color)
+void Box::Initialize(ID3D11Device* device, XMFLOAT3 position, float width, float height, XMFLOAT4 color)
 {
 
 	
@@ -68,6 +59,7 @@ void Box::init(ID3D11Device* device, XMFLOAT3 position, float width, float heigh
 		7,4,6,
 	};
 
+	mNumIndices = sizeof(indices) / sizeof(DWORD);
 
 
 	//create a vertex buffer
@@ -98,23 +90,23 @@ void Box::init(ID3D11Device* device, XMFLOAT3 position, float width, float heigh
 
 }
 
-void Box::init(ID3D11Device * device, XMFLOAT3 position, float width, float height, std::wstring texturePath)
+void Box::Initialize(ID3D11Device * device, XMFLOAT3 position, float width, float height, std::wstring texturePath)
 {
 	mPosition = position;
 
 	device->GetImmediateContext(&mDeviceContext);
 	mD3DDevice = device;
 
-	Vertex::PosTex mesh[] =
+	Vertex::PosNormTex mesh[] =
 	{
-		{ XMFLOAT3(-width / 2.0f, height / 2.0f, -width / 2.0f), XMFLOAT2(0.0f, 0.0f) },
-		{ XMFLOAT3(width / 2.0f, height / 2.0f, -width / 2.0f), XMFLOAT2(0.0f, 1.0f) },
-		{ XMFLOAT3(width / 2.0f, height / 2.0f, width / 2.0f), XMFLOAT2(0.0f, 1.0f) },
-		{ XMFLOAT3(-width / 2.0f, height / 2.0f, width / 2.0f), XMFLOAT2(1.0f, 0.0f) },
-		{ XMFLOAT3(-width / 2.0f, -height / 2.0f, -width / 2.0f), XMFLOAT2(1.0f, 0.0f) },
-		{ XMFLOAT3(width / 2.0f, -height / 2.0f, -width / 2.0f), XMFLOAT2(1.0f, 1.0f) },
-		{ XMFLOAT3(width / 2.0f, -height / 2.0f, width / 2.0f), XMFLOAT2(1.0f, 1.0f) },
-		{ XMFLOAT3(-width / 2.0f, -height / 2.0f, width / 2.0f), XMFLOAT2(0.5f, 0.0f) }
+		{ XMFLOAT3(-width / 2.0f, height / 2.0f, -width / 2.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+		{ XMFLOAT3(width / 2.0f, height / 2.0f, -width / 2.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),XMFLOAT2(0.0f, 1.0f) },
+		{ XMFLOAT3(width / 2.0f, height / 2.0f, width / 2.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),XMFLOAT2(0.0f, 1.0f) },
+		{ XMFLOAT3(-width / 2.0f, height / 2.0f, width / 2.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),XMFLOAT2(1.0f, 0.0f) },
+		{ XMFLOAT3(-width / 2.0f, -height / 2.0f, -width / 2.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),XMFLOAT2(1.0f, 0.0f) },
+		{ XMFLOAT3(width / 2.0f, -height / 2.0f, -width / 2.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),XMFLOAT2(1.0f, 1.0f) },
+		{ XMFLOAT3(width / 2.0f, -height / 2.0f, width / 2.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),XMFLOAT2(1.0f, 1.0f) },
+		{ XMFLOAT3(-width / 2.0f, -height / 2.0f, width / 2.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),XMFLOAT2(0.5f, 0.0f) }
 	};
 
 
@@ -140,12 +132,13 @@ void Box::init(ID3D11Device * device, XMFLOAT3 position, float width, float heig
 		7,4,6,
 	};
 
+	mNumIndices = sizeof(indices) / sizeof(DWORD);
 
 
 	//create a vertex buffer
 	D3D11_BUFFER_DESC bufferDesc;
 	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	bufferDesc.ByteWidth = sizeof(Vertex::PosTex) * 8; //total size of buffer in bytes
+	bufferDesc.ByteWidth = sizeof(Vertex::PosNormTex) * 8; //total size of buffer in bytes
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	bufferDesc.CPUAccessFlags = 0;
 	bufferDesc.MiscFlags = 0;
@@ -169,7 +162,7 @@ void Box::init(ID3D11Device * device, XMFLOAT3 position, float width, float heig
 
 }
 
-void Box::init(ID3D11Device * device, const std::vector<XMVECTOR>& eightPoints, XMFLOAT4 color)
+void Box::Initialize(ID3D11Device * device, const std::vector<XMVECTOR>& eightPoints, XMFLOAT4 color)
 {
 	mIsPretransformed = true;
 
@@ -216,7 +209,7 @@ void Box::init(ID3D11Device * device, const std::vector<XMVECTOR>& eightPoints, 
 		7,4,6,
 	};
 
-
+	mNumIndices = sizeof(indices) / sizeof(DWORD);
 
 	//create a vertex buffer
 	D3D11_BUFFER_DESC bufferDesc;
@@ -268,7 +261,7 @@ void Box::SetIsWireframe(bool isWireframe)
 }
 
 
-void Box::draw()
+void Box::Draw()
 {
 
 
@@ -276,16 +269,9 @@ void Box::draw()
 	UINT offset = 0;
 	
 
-	//move to world position if not already
-
-
 	if (mTextureResourceView)
 	{
-		stride = sizeof(Vertex::PosTex);
-		
-		mDeviceContext->IASetInputLayout(InputLayout::PosTex);
-		mDeviceContext->VSSetShader(Shaders::VS_SimpleProjection, NULL, 0);
-		mDeviceContext->PSSetShader(Shaders::PS_SimpleTexture, NULL, 0);
+		stride = sizeof(Vertex::PosNormTex);
 		mDeviceContext->PSSetShaderResources(0, 1, &mTextureResourceView);
 	
 
@@ -293,11 +279,9 @@ void Box::draw()
 	else
 	{
 		stride = sizeof(Vertex::PosColor);
-		mDeviceContext->IASetInputLayout(InputLayout::PosColor);
-		mDeviceContext->VSSetShader(Shaders::VS_SimpleProjectionColor, NULL, 0);
-		mDeviceContext->PSSetShader(Shaders::PS_SimpleColor, NULL, 0);
-		
+
 	}
+
 	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	mDeviceContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
 	mDeviceContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
@@ -307,7 +291,6 @@ void Box::draw()
 		ConstantBuffers::WorldMatrices worldMat;
 		worldMat.World = XMMatrixTranspose(XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z));
 		mDeviceContext->UpdateSubresource(ConstantBuffers::WorldMatrixBuffer, 0, NULL, &worldMat, 0, 0);
-		mDeviceContext->VSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
 	}
 
 
@@ -319,7 +302,8 @@ void Box::draw()
 	}
 
 
-	mDeviceContext->DrawIndexed(36, 0, 0);
+
+	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
 
 	if (mIsWireframe)
 		mDeviceContext->RSSetState(oldRasterizerState);

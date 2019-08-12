@@ -5,9 +5,9 @@
 #include <DDSTextureLoader.h>
 
 Skybox::Skybox()
-	: mDeviceContext(0), mVB(0), mIB(0), mSkyCubeMapSRV(0)
+	:mSkyCubeMapSRV(0)
 {
-	mNumIndices = 0;
+
 }
 
 Skybox::~Skybox()
@@ -227,15 +227,16 @@ void Skybox::init(ID3D11Device* device, float radius)
 	HandleError(mD3DDevice->CreateBuffer(&ibd, &iinitData, &mIB));
 }
 
-void Skybox::draw(const Camera& camera)
+void Skybox::Draw()
 {
 
 	// center Sky about eye in world space
-	XMFLOAT3 eyePos = camera.GetPosition();
+	XMFLOAT3 eyePos = XMFLOAT3(1.0f, 2.0f, 3.0f);
 	
 	
 	ConstantBuffers::WorldMatrices worldMat;
-	worldMat.World = XMMatrixTranspose(XMMatrixTranslation(eyePos.x, eyePos.y, eyePos.z));
+	XMMATRIX transl = XMMatrixTranslation(eyePos.x, eyePos.y, eyePos.z);
+	worldMat.World = XMMatrixTranspose(transl);
 
 	mDeviceContext->UpdateSubresource(ConstantBuffers::WorldMatrixBuffer, 0, NULL, &worldMat, 0, 0);
 
@@ -250,15 +251,12 @@ void Skybox::draw(const Camera& camera)
 
 	mDeviceContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
 	mDeviceContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
-	mDeviceContext->IASetInputLayout(InputLayout::Skybox);
+
 	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	mDeviceContext->VSSetShader(Shaders::VS_SkyBox, NULL, 0);
-	mDeviceContext->PSSetShader(Shaders::PS_SkyBox, NULL, 0);
-	mDeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
-	mDeviceContext->PSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
-	mDeviceContext->VSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
-	mDeviceContext->PSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
+
+	
 	mDeviceContext->PSSetShaderResources(1, 1, &mSkyCubeMapSRV);
+
 	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
 	
 	mDeviceContext->RSSetState(oldState);

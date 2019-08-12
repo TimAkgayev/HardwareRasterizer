@@ -2,12 +2,12 @@
 #include "Vertex.h"
 #include "Terrain.h"
 #include "Box.h"
-#include "InputLayouts.h"
 #include "CharacterController.h"
 #include "Shaders.h"
 #include "ConstantBuffers.h"
 #include "Skybox.h"
 #include "Object.h"
+#include "Light.h"
 #define TINYOBJLOADER_IMPLEMENTATION 
 #include "tinyobj\tinyobjloader\tiny_obj_loader.h"
 #include <string>
@@ -15,7 +15,7 @@
 #include <tuple>
 #include <map>
 
-ConstantBuffers::ProjectionVariables projectionMatrices;
+
 
 class NewDXApp : public DirectXApplication
 {
@@ -31,15 +31,21 @@ public:
 
 private:
 	
-	ID3D11ShaderResourceView* mSkyCubeMapSRV;
 	void mInitResources();
 	void mLoadObjects();
+
+
 private:
 
+	ID3D11ShaderResourceView* mSkyCubeMapSRV;
 	Terrain terrain;
 	CharacterController* mCharacterController;
 	Skybox mSkybox;
 	std::vector<Object*> mObjectList;
+	
+	Light* mDirectionalLight;
+	Camera testCam;
+	Box testBox;
 };
 
 
@@ -80,17 +86,26 @@ void NewDXApp::initApp()
 
 	mInitResources();
 
-	terrain.CreateFromHeightMap(mD3DDevice, L"..\\HardwareRasterizer\\Heightmaps\\TestFloorSmall.bmp", 1000, 50);
+	
+	terrain.CreateFromHeightMap(mD3DDevice, L"..\\HardwareRasterizer\\Heightmaps\\TestFloorSmall.bmp", 2.0f, 0.1);
 	terrain.SetTexture(L"..\\HardwareRasterizer\\Textures\\grass.bmp");
 	terrain.CreateCollisionBoxes();
 
 	
-	mCharacterController = new CharacterController(&terrain);
-	mCharacterController->SetMoveSpeed(140.0f);
+	mCharacterController = new CharacterController(mDeviceContext, &terrain);
+	mCharacterController->SetMoveSpeed(7.0f);
 
-	mSkybox.init(mD3DDevice, 1000000.0f);
 
+	XMFLOAT3 eye = { 40.0f, 30.0f, 40.0f};
+	XMFLOAT3 at = { 0.0f, 0.0f, 0.0f};
+	XMFLOAT4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	mDirectionalLight = new Light(mDeviceContext, eye, at, color);
+
+	mSkybox.init(mD3DDevice, 1000.0f);
 	mLoadObjects();
+
+	
+
 
 }
 
@@ -100,11 +115,13 @@ void NewDXApp::updateScene(float dt)
 	DirectXApplication::updateScene(dt);
 	mCharacterController->Update(dt);
 
-	projectionMatrices.View = XMMatrixTranspose(mCharacterController->GetCamera().GetViewMatrix());
-	projectionMatrices.Projection = XMMatrixTranspose(mCharacterController->GetCamera().GetProjectionMatrix());
+	XMVECTOR playerPos = XMLoadFloat3(&mCharacterController->GetPosition());
 
+	XMFLOAT3 lightPos;
+	XMVECTOR destination = { sin(dt), cos(dt), tan(dt) };
+	XMStoreFloat3(&lightPos, mDirectionalLight->GetPosition() + XMVector3Normalize(mDirectionalLight->GetPosition() - destination)*10.0f*dt);
 
-	mDeviceContext->UpdateSubresource(ConstantBuffers::ViewProjBuffer, 0, NULL, &projectionMatrices, 0, 0);
+	mDirectionalLight->SetPosition(lightPos);
 
 }
 
@@ -114,17 +131,14 @@ void NewDXApp::drawScene()
 	// Clear the back buffer 
 	float clearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; // red,green,blue,alpha
 	mDeviceContext->ClearRenderTargetView(mD3D11RenderTargetView, clearColor);
-	mDeviceContext->ClearDepthStencilView(mD3D11DepthStencilView, D3D11_CLEAR_DEPTH, 1, 0);
-	mDeviceContext->ClearDepthStencilView(mD3D11DepthStencilView, D3D11_CLEAR_STENCIL, 1, 1);
+	mDeviceContext->ClearDepthStencilView(mD3D11DepthStencilView, D3D11_CLEAR_DEPTH || D3D11_CLEAR_STENCIL, 1, 0);
+	
 
 
-	terrain.draw();
-	mSkybox.draw(mCharacterController->GetCamera());
+	Shaders::ShadowMapShader::Render(mDeviceContext, &terrain, &mObjectList[0], mObjectList.size());
+	Shaders::SkyboxShader::Render(mDeviceContext, (Object*)&mSkybox);
 
-	for (Object* obj : mObjectList)
-		obj->draw();
-
-
+	
 	mD3D11SwapChain->Present(0, 0);
 
 }
@@ -139,9 +153,9 @@ void NewDXApp::mInitResources()
 {
 	
 
-	Shaders::InitAll(mD3DDevice);
-	InputLayout::InitAll(mD3DDevice);
+	Shaders::LoadAll(mD3DDevice);
 	ConstantBuffers::InitAll(mD3DDevice);
+	
 
 }
 
@@ -255,7 +269,7 @@ void NewDXApp::mLoadObjects()
 	for (object obj : objList)
 	{
 		Object* Obj = new Object();
-		Obj->init(mD3DDevice, XMFLOAT3(0.0f, 0.0f, 0.0f), obj.vertexList, obj.numVertices, obj.indexList, L"..\\HardwareRasterizer\\Textures\\Brick.bmp", 1000.0f);
+		Obj->Initialize(mD3DDevice, XMFLOAT3(15.0f, 3.0f, 0.0f), obj.vertexList, obj.numVertices, obj.indexList, L"..\\HardwareRasterizer\\Textures\\Brick.bmp", 3.0f);
 		mObjectList.push_back(Obj);
 
 
@@ -269,3 +283,5 @@ void NewDXApp::mLoadObjects()
 	
 
 }
+
+

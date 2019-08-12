@@ -1,12 +1,13 @@
 #include "CharacterController.h"
 #include <time.h>
 
-CharacterController::CharacterController(Terrain* terrain)
+CharacterController::CharacterController(ID3D11DeviceContext* context, Terrain* terrain)
 {
 	mMoveSpeed = 100.0f;
 	mTurnSpeed = 200.0f;
 
 	pAssociatedTerrain = terrain;
+	mDeviceContext = context;
 
 	XMFLOAT2 lowerLeft, upperRight;
     pAssociatedTerrain->GetBoundingCoordinates(&lowerLeft, &upperRight);
@@ -14,21 +15,20 @@ CharacterController::CharacterController(Terrain* terrain)
 	float playerPosX; 
 	float playerPosZ;
 	
-	srand(time(NULL));
+	srand((UINT)time(NULL));
 
 	if (lowerLeft.x > 0 || upperRight.x > 0)
 	{
-		playerPosX = (rand() % int(abs(lowerLeft.x) - 1 + abs(upperRight.x) - 1 + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
-		playerPosZ = (rand() % int(abs(lowerLeft.y) - 1 + abs(upperRight.y) - 1 + 0.5f)) - int(abs(lowerLeft.y)  - 1 + 0.5f);
+		playerPosX = (float)(rand() % int(abs(lowerLeft.x) - 1 + abs(upperRight.x) - 1 + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
+		playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - 1 + abs(upperRight.y) - 1 + 0.5f)) - int(abs(lowerLeft.y)  - 1 + 0.5f);
 	}
 	else if (lowerLeft.x < 0 && upperRight.x < 0)
 	{
-		playerPosX = (rand() % int(abs(lowerLeft.x) - 1 + (upperRight.x - 1) + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
-		playerPosZ = (rand() % int(abs(lowerLeft.y) - 1 + (upperRight.y - 1) + 0.5f)) - int(abs(lowerLeft.y) - 1 + 0.5f);
+		playerPosX = (float)(rand() % int(abs(lowerLeft.x) - 1 + (upperRight.x - 1) + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
+		playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - 1 + (upperRight.y - 1) + 0.5f)) - int(abs(lowerLeft.y) - 1 + 0.5f);
 	}
 
 	
-
 	XMFLOAT3 playerPosf = { playerPosX, 0.0f, playerPosZ };
 	
 	float playerPosY;
@@ -37,7 +37,7 @@ CharacterController::CharacterController(Terrain* terrain)
 	XMVECTOR finalPosition = { playerPosX, playerPosY, playerPosZ, 0.0f };
 
 	mCollisionBox.init(XMFLOAT3(playerPosX, playerPosY, playerPosZ), XMLoadFloat3(&mCam.GetRightVector()), 10, 10);
-	mCam.SetPosition(XMFLOAT3(playerPosX, playerPosY + 400, playerPosZ));
+	mCam.SetPosition(XMFLOAT3(playerPosX, playerPosY + 2, playerPosZ));
 
 	//not jumping atm
 	mIsAirborne = false;
@@ -59,7 +59,6 @@ Camera& CharacterController::GetCamera()
 void CharacterController::Move(XMVECTOR direction)
 {
 	
-    
 	//check height at that point and update
 	XMVECTOR boxPosV = mCollisionBox.GetCenter();
 	XMVECTOR boxPosAfterV = boxPosV + direction * mMoveSpeed;
@@ -90,7 +89,7 @@ void CharacterController::Move(XMVECTOR direction)
 	if (camPosFinalF.y < 400)
 		int x = 0;
 
-
+		
 	if (mIsAirborne)
 	{
 		//only set the x and z coordinates and leave the y alone
@@ -211,7 +210,7 @@ void CharacterController::Update(float dt)
 		//rf = ri + vi*t = 1/2*g*t^2
 		float t = mJumpTime*30;
 		XMVECTOR posAfterJump = mJumpStartPos + vel * t + 0.5*grav*t*t;
-
+		 
 
 		XMFLOAT3 posAfterJumpF;
 		XMStoreFloat3(&posAfterJumpF, posAfterJump);
@@ -255,7 +254,15 @@ void CharacterController::Update(float dt)
 
 	}
 
+	//update constant buffers
+	ConstantBuffers::ProjectionVariables projectionMatrices;
+	projectionMatrices.View = XMMatrixTranspose(mCam.GetViewMatrix());
+	projectionMatrices.Projection = XMMatrixTranspose(mCam.GetProjectionMatrix());
+	mDeviceContext->UpdateSubresource(ConstantBuffers::ViewProjBuffer, 0, NULL, &projectionMatrices, 0, 0);
 
+	ConstantBuffers::CameraPosition eyePos;
+	eyePos.EyePosition = mCam.GetPosition();
+	mDeviceContext->UpdateSubresource(ConstantBuffers::CameraPositionBuffer, 0, NULL, &eyePos, 0, 0);
 
 
 }
