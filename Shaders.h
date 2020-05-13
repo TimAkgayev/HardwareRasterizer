@@ -42,20 +42,20 @@ namespace Shaders
 	namespace SkyboxShader
 	{
 
-		void Render(ID3D11DeviceContext* context, Object* obj);
+		void Render(ID3D11DeviceContext* context, IDrawable* obj);
 
 	};
 
 	namespace SimpleColorShader
 	{
 
-		void Render(ID3D11DeviceContext* context, Object* obj);
+		void Render(ID3D11DeviceContext* context, IDrawable* obj);
 
 	};
 
 	namespace ShadowMapShader
 	{
-		void Render(ID3D11DeviceContext* context, Object* shadowSurfaceObj, Object** obj, UINT numObjects);
+		void Render(ID3D11DeviceContext* context, IDrawable* shadowSurfaceObj, IDrawable** obj, UINT numObjects);
 	};
 
 	

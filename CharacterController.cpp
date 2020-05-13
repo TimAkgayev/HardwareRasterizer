@@ -1,47 +1,53 @@
 #include "CharacterController.h"
 #include <time.h>
 
-CharacterController::CharacterController(ID3D11DeviceContext* context, Terrain* terrain)
+CharacterController::CharacterController(ID3D11DeviceContext* context, Terrain* terrain, PhysicsEngine* physicsEngine)
 {
 	mMoveSpeed = 100.0f;
 	mTurnSpeed = 200.0f;
 
 	pAssociatedTerrain = terrain;
 	mDeviceContext = context;
+	mPhysicsEngine = physicsEngine;
 
 	XMFLOAT2 lowerLeft, upperRight;
-    pAssociatedTerrain->GetBoundingCoordinates(&lowerLeft, &upperRight);
+    pAssociatedTerrain->GetBoundingRect(lowerLeft, upperRight);
 	
 	float playerPosX; 
 	float playerPosZ;
 	
 	srand((UINT)time(NULL));
 
+	float distFromEdge = 10;
+
 	if (lowerLeft.x > 0 || upperRight.x > 0)
 	{
-		playerPosX = (float)(rand() % int(abs(lowerLeft.x) - 1 + abs(upperRight.x) - 1 + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
-		playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - 1 + abs(upperRight.y) - 1 + 0.5f)) - int(abs(lowerLeft.y)  - 1 + 0.5f);
+		playerPosX = (float)(rand() % int(abs(lowerLeft.x) - distFromEdge + abs(upperRight.x) - distFromEdge + 0.5f)) - int(abs(lowerLeft.x) - distFromEdge + 0.5f);
+		playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - distFromEdge + abs(upperRight.y) - distFromEdge + 0.5f)) - int(abs(lowerLeft.y)  - distFromEdge + 0.5f);
 	}
 	else if (lowerLeft.x < 0 && upperRight.x < 0)
 	{
-		playerPosX = (float)(rand() % int(abs(lowerLeft.x) - 1 + (upperRight.x - 1) + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
-		playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - 1 + (upperRight.y - 1) + 0.5f)) - int(abs(lowerLeft.y) - 1 + 0.5f);
+		playerPosX = (float)(rand() % int(abs(lowerLeft.x) - distFromEdge + (upperRight.x - distFromEdge) + 0.5f)) - int(abs(lowerLeft.x) - distFromEdge + 0.5f);
+		playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - distFromEdge + (upperRight.y - distFromEdge) + 0.5f)) - int(abs(lowerLeft.y) - distFromEdge + 0.5f);
 	}
 
 	
-	XMFLOAT3 playerPosf = { playerPosX, 0.0f, playerPosZ };
+	XMFLOAT3 playerPosf = { playerPosX, 1.0f, playerPosZ };
 	
+	//XMFLOAT3 playerPosf = { 29.69, 1.0f, 10.21 };
+
+
 	float playerPosY;
 	pAssociatedTerrain->GetHeightAtPosition(playerPosf, playerPosY);
 
 	XMVECTOR finalPosition = { playerPosX, playerPosY, playerPosZ, 0.0f };
 
-	mCollisionBox.init(XMFLOAT3(playerPosX, playerPosY, playerPosZ), XMLoadFloat3(&mCam.GetRightVector()), 10, 10);
+	mPlayerCollisionBox.init(XMFLOAT3(playerPosX, playerPosY, playerPosZ), XMLoadFloat3(&mCam.GetRightVector()), 10, 10);
 	mCam.SetPosition(XMFLOAT3(playerPosX, playerPosY + 2, playerPosZ));
 
 	//not jumping atm
 	mIsAirborne = false;
-	mJumpVelocity = 150.0f;
+	mJumpVelocity = 50.0f;
 
 
 }
@@ -60,11 +66,11 @@ void CharacterController::Move(XMVECTOR direction)
 {
 	
 	//check height at that point and update
-	XMVECTOR boxPosV = mCollisionBox.GetCenter();
+	XMVECTOR boxPosV = mPlayerCollisionBox.GetCenter();
 	XMVECTOR boxPosAfterV = boxPosV + direction * mMoveSpeed;
-	
+
 	//check collisions		
-	if (mCollisionBox.checkForCollision(boxPosAfterV))
+	if (mPhysicsEngine->CheckForCollision(mPlayerCollisionBox, boxPosAfterV) == true)
 		return;
 
 	XMFLOAT3 boxPosAfterF;
@@ -73,12 +79,15 @@ void CharacterController::Move(XMVECTOR direction)
 	float playerPosY;
 	pAssociatedTerrain->GetHeightAtPosition(boxPosAfterF, playerPosY);
 
+	if (playerPosY < 0)
+		int x = 0;
+
 	XMVECTOR finalMoveVector = { boxPosAfterF.x, playerPosY, boxPosAfterF.z, 0.0f };
 	finalMoveVector = finalMoveVector - boxPosV;
 
 
 	XMVECTOR camPosFinalV = XMLoadFloat3(&mCam.GetPosition()) + finalMoveVector;
-	XMVECTOR boxPosFinalV = mCollisionBox.GetCenter() + finalMoveVector;
+	XMVECTOR boxPosFinalV = mPlayerCollisionBox.GetCenter() + finalMoveVector;
 	
 	XMFLOAT3 camPosFinalF;
 	XMFLOAT3 boxPosFinalF;
@@ -93,7 +102,7 @@ void CharacterController::Move(XMVECTOR direction)
 	if (mIsAirborne)
 	{
 		//only set the x and z coordinates and leave the y alone
-		XMVECTOR boxPosition = mCollisionBox.GetCenter();
+		XMVECTOR boxPosition = mPlayerCollisionBox.GetCenter();
 		XMFLOAT3 boxPositionF;
 		XMStoreFloat3(&boxPositionF, boxPosition);
 
@@ -101,12 +110,12 @@ void CharacterController::Move(XMVECTOR direction)
 		XMFLOAT3 boxPosFinalNoYF = { boxPosFinalF.x, boxPositionF.y, boxPosFinalF.z };
 
 		mCam.SetPosition(camPosFinalNoYF);
-		mCollisionBox.SetCenter(boxPosFinalNoYF);
+		mPlayerCollisionBox.SetCenter(boxPosFinalNoYF);
 	}
 	else
 	{
 		mCam.SetPosition(camPosFinalF);
-		mCollisionBox.SetCenter(boxPosFinalF);
+		mPlayerCollisionBox.SetCenter(boxPosFinalF);
 	}
 
 	
@@ -119,7 +128,7 @@ void CharacterController::Jump()
 	if (!mIsAirborne)
 	{
 		mJumpTime = 0.0f;
-		mJumpStartPos = mCollisionBox.GetCenter();
+		mJumpStartPos = mPlayerCollisionBox.GetCenter();
 		mIsAirborne = true;
 	}
 }
@@ -208,7 +217,7 @@ void CharacterController::Update(float dt)
 
 		//projectile motion equation 
 		//rf = ri + vi*t = 1/2*g*t^2
-		float t = mJumpTime*30;
+		float t = mJumpTime*4;
 		XMVECTOR posAfterJump = mJumpStartPos + vel * t + 0.5*grav*t*t;
 		 
 
@@ -219,7 +228,7 @@ void CharacterController::Update(float dt)
 
 		//every frame check to make sure that we're not hitting land
 		float currentTerrainHeight;
-		XMVECTOR currentPosition = mCollisionBox.GetCenter();
+		XMVECTOR currentPosition = mPlayerCollisionBox.GetCenter();
 		XMFLOAT3 currentPositionF;
 		XMStoreFloat3(&currentPositionF, currentPosition);
 		pAssociatedTerrain->GetHeightAtPosition(currentPositionF, currentTerrainHeight);
@@ -232,10 +241,10 @@ void CharacterController::Update(float dt)
 
 		else
 		{
-
+			
 
 			//find the difference between current box position and position after the jump and offset the camera by that difference
-			XMVECTOR boxPos = mCollisionBox.GetCenter();
+			XMVECTOR boxPos = mPlayerCollisionBox.GetCenter();
 			XMVECTOR posDiff = posAfterJump - boxPos;
 			XMFLOAT3 boxPosF;
 			XMStoreFloat3(&boxPosF, boxPos);
@@ -247,22 +256,12 @@ void CharacterController::Update(float dt)
 
 			XMFLOAT3 finalBoxPos = { boxPosF.x, posAfterJumpF.y, boxPosF.z };
 
-			mCollisionBox.SetCenter(finalBoxPos);
+			mPlayerCollisionBox.SetCenter(finalBoxPos);
 			mCam.SetPosition(XMFLOAT3(mCam.GetPosition().x, newCamPosF.y, mCam.GetPosition().z));
 		}
 	
 
 	}
-
-	//update constant buffers
-	ConstantBuffers::ProjectionVariables projectionMatrices;
-	projectionMatrices.View = XMMatrixTranspose(mCam.GetViewMatrix());
-	projectionMatrices.Projection = XMMatrixTranspose(mCam.GetProjectionMatrix());
-	mDeviceContext->UpdateSubresource(ConstantBuffers::ViewProjBuffer, 0, NULL, &projectionMatrices, 0, 0);
-
-	ConstantBuffers::CameraPosition eyePos;
-	eyePos.EyePosition = mCam.GetPosition();
-	mDeviceContext->UpdateSubresource(ConstantBuffers::CameraPositionBuffer, 0, NULL, &eyePos, 0, 0);
 
 
 }

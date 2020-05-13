@@ -2,12 +2,18 @@
 #include "common_includes.h"
 #include "Vertex.h"
 
-class Object
+class IDrawable
+{
+public:
+	virtual void Draw() = 0;
+};
+
+class Object : public IDrawable
 {
 public:
 	Object();
 	virtual void Initialize(ID3D11Device* device, DirectX::XMFLOAT3 position, const Vertex::PosNormTex* vertexList, UINT numVerteices, std::vector<UINT>& indexList, std::wstring texturePath, float scale = 1.0f);
-	virtual void Draw();
+	virtual void Draw() override;
 	virtual UINT GetNumberOfIndices();
 
 	virtual ~Object();

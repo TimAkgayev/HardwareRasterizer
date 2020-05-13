@@ -99,7 +99,7 @@ void CreateShadowMap(ID3D11Device* device)
 }
 
 
-void Shaders::ShadowMapShader::Render(ID3D11DeviceContext * context, Object* shadowSurfaceObj, Object ** obj, UINT numObjects)
+void Shaders::ShadowMapShader::Render(ID3D11DeviceContext * context, IDrawable* shadowSurfaceObj, IDrawable ** obj, UINT numObjects)
 {
 
 	//generate the shadow map
@@ -123,7 +123,7 @@ void Shaders::ShadowMapShader::Render(ID3D11DeviceContext * context, Object* sha
 
 	context->ClearDepthStencilView(mShadowMapView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-
+	
 	context->VSSetShader(Shaders::VS_ShadowMap, NULL, 0);
 	context->PSSetShader(Shaders::PS_ShadowMap, NULL, 0);
 	context->IASetInputLayout(Shaders::InputLayout_ShadowMap);
@@ -133,8 +133,10 @@ void Shaders::ShadowMapShader::Render(ID3D11DeviceContext * context, Object* sha
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+
 	//draw shadow maps
 	shadowSurfaceObj->Draw();
+
 
 	for(UINT i = 0; i < numObjects; i++)
 		obj[i]->Draw();
@@ -177,7 +179,6 @@ void Shaders::ShadowMapShader::Render(ID3D11DeviceContext * context, Object* sha
 	context->PSSetSamplers(0, 1, &mShadowSamplerState);
 
 	shadowSurfaceObj->Draw();
-
 
 	context->PSSetShader(PS_DirectionalLight, NULL, 0);
 
@@ -437,7 +438,7 @@ HRESULT Shaders::CompileShaderFromFile(WCHAR * szFileName, LPCSTR szEntryPoint, 
 
 
 
-void Shaders::SkyboxShader::Render(ID3D11DeviceContext * context, Object * obj)
+void Shaders::SkyboxShader::Render(ID3D11DeviceContext * context, IDrawable * obj)
 {
 	context->VSSetShader(VS_SkyBox, NULL, 0);
 	context->PSSetShader(PS_SkyBox, NULL, 0);
@@ -455,21 +456,35 @@ void Shaders::SkyboxShader::Render(ID3D11DeviceContext * context, Object * obj)
 	obj->Draw();
 }
 
-void Shaders::SimpleColorShader::Render(ID3D11DeviceContext * context, Object * obj)
+void Shaders::SimpleColorShader::Render(ID3D11DeviceContext * context, IDrawable * obj)
 {
+
+	//save the previous inputs
+	ID3D11VertexShader* oldVS;
+	context->VSGetShader(&oldVS, NULL, 0);
+
+	ID3D11PixelShader* oldPS;
+	context->PSGetShader(&oldPS, NULL, 0);
+
+	ID3D11InputLayout* oldLayout;
+	context->IAGetInputLayout(&oldLayout);
 	
+	//set new inputs
 	context->VSSetShader(VS_SimpleColor, NULL, 0);
 	context->PSSetShader(PS_SimpleColor, NULL, 0);
 	context->IASetInputLayout(InputLayout_SimpleColor);
-
 	context->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
 	context->PSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
-
 	context->VSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
 	context->PSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
 
-
 	obj->Draw();
+
+	//restore old ones
+	context->VSSetShader(oldVS, NULL, 0);
+	context->PSSetShader(oldPS, NULL, 0);
+	context->IASetInputLayout(oldLayout);
+
 	
 }
 

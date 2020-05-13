@@ -330,7 +330,7 @@ void CollisionBox::mGetAxes(const CollisionBox& box1, const CollisionBox& box2)
 
 
 
-	for (int i = 0; i < b1Vertices.size(); i++)
+	for (unsigned int i = 0; i < b1Vertices.size(); i++)
 	{
 		XMVECTOR p1 = b1Vertices[i];
 
@@ -347,7 +347,7 @@ void CollisionBox::mGetAxes(const CollisionBox& box1, const CollisionBox& box2)
 		mProjectionAxesShape1.push_back(edgeNormal);
 	}
 
-	for (int i = 0; i < b2Vertices.size(); i++)
+	for (unsigned int i = 0; i < b2Vertices.size(); i++)
 	{
 		XMVECTOR p1 = b2Vertices[i];
 

@@ -13,15 +13,10 @@ public:
 	CollisionBox();
 	~CollisionBox();
 
-
 	//allow collision box to be defined in the x-z plane with width and height of the wall
 	void init(DirectX::XMFLOAT3 position, XMVECTOR xAxis, float width, float height);
 	void init(DirectX::XMFLOAT2 startXZ, DirectX::XMFLOAT2 endXZ, float wdith = 1.0f, float height = 100.0f);
 	
-
-
-
-
 	XMVECTOR GetXAxis() const;
 	XMVECTOR GetYAxis() const;
 	XMVECTOR GetZAxis() const;
@@ -29,8 +24,6 @@ public:
 	XMVECTOR GetCenter() const;
 	void     SetCenter(XMFLOAT3 pos);
 	std::vector<XMVECTOR> GetVertices() const;
-
-	
 
 public:
 

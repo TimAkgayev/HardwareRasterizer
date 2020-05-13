@@ -1,7 +1,7 @@
 #pragma once
 #include "Camera.h"
 #include <DirectXMath.h>
-#include "CollisionBox.h"
+#include "PhysicsEngine.h"
 #include "Terrain.h"
 #include "GameTimer.h"
 
@@ -10,7 +10,7 @@ using namespace DirectX;
 __declspec(align(16)) class CharacterController
 {
 public:
-	CharacterController(ID3D11DeviceContext* context, Terrain* terrain);
+	CharacterController(ID3D11DeviceContext* context, Terrain* terrain, PhysicsEngine* physicsEngine);
 	~CharacterController();
 
 	Camera& GetCamera();
@@ -23,7 +23,7 @@ public:
 	XMFLOAT3 GetPosition()
 	{
 		XMFLOAT3 centerF;
-		XMStoreFloat3(&centerF, mCollisionBox.GetCenter());
+		XMStoreFloat3(&centerF, mPlayerCollisionBox.GetCenter());
 		return centerF;
 	}
 
@@ -37,12 +37,16 @@ public:
 		_mm_free(p);
 	}
 
+
+
 	void SetMoveSpeed(float speed);
 	void SetTurnSpeed(float anglesPerSecond);
 
 protected:
+
+	PhysicsEngine* mPhysicsEngine;
 	ID3D11DeviceContext* mDeviceContext;
-	CollisionBox mCollisionBox;
+	CollisionBox mPlayerCollisionBox;
 	Camera mCam;
 
 	Terrain* pAssociatedTerrain;

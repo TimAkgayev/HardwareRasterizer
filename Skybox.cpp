@@ -128,9 +128,14 @@ void Skybox::init(ID3D11Device* device, float radius)
 	mD3DDevice = device;
 	mD3DDevice->GetImmediateContext(&mDeviceContext);
 	
+	std::wstring GrassLandCubeMapPath = L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Projects\\HardwareRasterizer\\CubeMapLuna\\grassenvmap1024.dds";
+	std::wstring CityCubeMapPath = L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Projects\\HardwareRasterizer\\HardwareRasterizer\\Textures\\CityCubeMap.dds";
+	std::wstring TropicalCubeMapPath = L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Projects\\HardwareRasterizer\\HardwareRasterizer\\Textures\\TropicalCubeMap.dds";
+
+
 	//create a skybox ============================================================================
 	//HRESULT hr = D3DX11CreateShaderResourceViewFromFile(mD3DDevice, L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Projects\\HardwareRasterizer\\CubeMapLuna\\grassenvmap1024.dds", 0, 0, &mSkyCubeMapSRV, 0);
-	HRESULT hr = CreateDDSTextureFromFile(mD3DDevice, L"C:\\Users\\Tim\\Documents\\Visual Studio 2017\\Projects\\HardwareRasterizer\\CubeMapLuna\\grassenvmap1024.dds", NULL, &mSkyCubeMapSRV);
+	HRESULT hr = CreateDDSTextureFromFile(mD3DDevice, GrassLandCubeMapPath.c_str(), 0, &mSkyCubeMapSRV);
 
 	std::vector<XMVECTOR> vertices;
 	std::vector<DWORD> indices;

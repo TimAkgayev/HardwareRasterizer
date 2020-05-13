@@ -17,8 +17,9 @@ Camera::Camera()
 	XMFLOAT3 posF = { 0.0F, 300.0f, 0.0f };
 	mPosition = XMLoadFloat3(&posF);
 
-	mProjectionMatrix = XMMatrixPerspectiveFovLH(3.14159265f / 4.0f, 4.0f/3.0f, 1.0f, 10000.0f);
+	mProjectionMatrix = XMMatrixPerspectiveFovLH(3.14159265f / 4.0f, 4.0f/3.0f, 1.0f, 1000.0f);
 
+	mIsLocked = false;
 }
 
 
@@ -30,7 +31,8 @@ void Camera::Move(XMFLOAT3 dir)
 
 void Camera::Move(XMVECTOR dir)
 {
-	mPosition += dir;
+	if(!mIsLocked)
+		mPosition += dir;
 }
 
 void Camera::MoveAlongLookAt(float amount)
@@ -79,6 +81,9 @@ XMFLOAT3 Camera::GetUpVector() const
 
 void Camera::Roll(float degrees)
 {
+	if (mIsLocked)
+		return;
+
 	XMVECTOR rotQuaternion = XMQuaternionRotationAxis(mLookAt, degrees * XM_PI / 180);
 
 	XMVector3Rotate(mUp, rotQuaternion);
@@ -92,7 +97,13 @@ void Camera::Roll(float degrees)
 XMMATRIX Camera::Pitch(float degrees)
 {
 
-	XMVECTOR rotQuaternion = XMQuaternionRotationAxis(mRight, degrees * XM_PI / 180);
+	XMVECTOR rotQuaternion = { 0.0f, 0.0f, 0.0f ,0.0f };
+
+	if (mIsLocked)
+		return  XMMatrixRotationQuaternion(rotQuaternion);
+
+
+	rotQuaternion = XMQuaternionRotationAxis(mRight, degrees * XM_PI / 180);
 	mUp = XMVector3Rotate(mUp, rotQuaternion);
 	mUp = XMVector3Normalize(mUp);
 
@@ -106,8 +117,16 @@ XMMATRIX Camera::Pitch(float degrees)
 
 XMMATRIX Camera::Yaw(float degrees)
 {
+
+	XMVECTOR rotQuaternion = { 0.0f, 0.0f, 0.0f ,0.0f };
+
+	if (mIsLocked)
+		return XMMatrixRotationQuaternion(rotQuaternion);
+
+
+
 	XMVECTOR globalUp = { 0.0f, 1.0f, 0.0f, 0.0f };
-	XMVECTOR rotQuaternion = XMQuaternionRotationAxis(globalUp, degrees * XM_PI / 180);
+	rotQuaternion = XMQuaternionRotationAxis(globalUp, degrees * XM_PI / 180);
 	
 	mRight = XMVector3Rotate(mRight, rotQuaternion);
 	mRight = XMVector3Normalize(mRight);
@@ -162,8 +181,8 @@ XMMATRIX Camera::GetProjectionMatrix() const
 
 void Camera::SetPosition(XMFLOAT3 & position)
 {
-	
-	mPosition = XMLoadFloat3(&position);
+	if(!mIsLocked)
+		mPosition = XMLoadFloat3(&position);
 }
 
 XMFLOAT3 Camera::GetPosition() const
@@ -171,4 +190,14 @@ XMFLOAT3 Camera::GetPosition() const
 	XMFLOAT3 outF;
 	XMStoreFloat3(&outF, mPosition);
 	return outF;
+}
+
+void Camera::Lock()
+{
+	mIsLocked = true;
+}
+
+void Camera::Unlock()
+{
+	mIsLocked = false;
 }

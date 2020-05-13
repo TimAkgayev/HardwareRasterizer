@@ -167,7 +167,7 @@ float4 PS_ShadowSurfaceDirectionalLight(DirectionalLightPSInput input) : SV_Targ
 float4 PS_DirectionalLight(DirectionalLightPSInput input) : SV_Target
 {
 
-	return calcBlinnPhongLighting(Ka, Kd, Ks, A, LightColor, input.Normal, LightDirection, input.HalfAngle) * txDiffuse.Sample(triLinearSampler, input.Uv);
+	return AmbientLight*2* txDiffuse.Sample(triLinearSampler, input.Uv) + calcBlinnPhongLighting(Ka, Kd, Ks, A, LightColor, input.Normal, LightDirection, input.HalfAngle) * txDiffuse.Sample(triLinearSampler, input.Uv);
 }
 
 struct ColorVertex

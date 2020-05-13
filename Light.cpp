@@ -68,6 +68,6 @@ void Light::mUpdateBuffer()
 	mDeviceContext->UpdateSubresource(ConstantBuffers::DirectionalLightBuffer, 0, NULL, &dirLight, 0, 0);
 
 	ConstantBuffers::LightVariables lightVars;
-	lightVars.AmbientLight = { 0.05f, 0.05f, 0.05f, 1.0f };
+	lightVars.AmbientLight = { 0.1f, 0.1f, 0.1f, 1.0f };
 	mDeviceContext->UpdateSubresource(ConstantBuffers::LightVariablesBuffer, 0, NULL, &lightVars, 0, 0);
 }

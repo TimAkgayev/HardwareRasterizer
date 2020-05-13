@@ -33,8 +33,13 @@ public:
 	virtual void SetPosition(XMFLOAT3& position);
 	virtual XMFLOAT3 GetPosition() const;
 	
+	virtual void Lock();
+	virtual void Unlock();
 
 protected:
+
+	bool mIsLocked;
+
 	XMVECTOR mUp;
 	XMVECTOR mRight;
 	XMVECTOR mLookAt;

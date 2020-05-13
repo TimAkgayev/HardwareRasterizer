@@ -270,8 +270,8 @@ void DirectXApplication::initDirectX()
 	mDeviceContext->OMSetDepthStencilState(mDepthStencilState, 1);
 
 	//set view port aka region of render target ===================================================
-	mD3D11Viewport.Width = swapChainDesc.BufferDesc.Width;
-	mD3D11Viewport.Height = swapChainDesc.BufferDesc.Height;
+	mD3D11Viewport.Width = (float)swapChainDesc.BufferDesc.Width;
+	mD3D11Viewport.Height = (float)swapChainDesc.BufferDesc.Height;
 	mD3D11Viewport.MinDepth = 0.0f;
 	mD3D11Viewport.MaxDepth = 1.0f;
 	mD3D11Viewport.TopLeftX = 0;
