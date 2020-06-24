@@ -1,14 +1,13 @@
 #pragma once
 #include "common_includes.h"
 #include <string>
-#include "Vertex.h"
 #include "ConstantBuffers.h"
-#include "Object.h"
+#include "WorldObject.h"
 
 
 using namespace DirectX;
 
-class Box : public Object
+class Box : public WorldObject
 {
 public:
 	Box();

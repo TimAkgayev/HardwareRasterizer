@@ -1,56 +1,70 @@
 #include "CharacterController.h"
 #include <time.h>
 
-CharacterController::CharacterController(ID3D11DeviceContext* context, Terrain* terrain, PhysicsEngine* physicsEngine)
+CharacterController::CharacterController(ID3D11DeviceContext* context, Terrain* terrain, PhysicsEngine* physicsEngine, XMFLOAT3* position)
 {
 	mMoveSpeed = 100.0f;
 	mTurnSpeed = 200.0f;
 
-	pAssociatedTerrain = terrain;
 	mDeviceContext = context;
 	mPhysicsEngine = physicsEngine;
-
-	XMFLOAT2 lowerLeft, upperRight;
-    pAssociatedTerrain->GetBoundingRect(lowerLeft, upperRight);
-	
-	float playerPosX; 
-	float playerPosZ;
-	
-	srand((UINT)time(NULL));
-
-	float distFromEdge = 10;
-
-	if (lowerLeft.x > 0 || upperRight.x > 0)
-	{
-		playerPosX = (float)(rand() % int(abs(lowerLeft.x) - distFromEdge + abs(upperRight.x) - distFromEdge + 0.5f)) - int(abs(lowerLeft.x) - distFromEdge + 0.5f);
-		playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - distFromEdge + abs(upperRight.y) - distFromEdge + 0.5f)) - int(abs(lowerLeft.y)  - distFromEdge + 0.5f);
-	}
-	else if (lowerLeft.x < 0 && upperRight.x < 0)
-	{
-		playerPosX = (float)(rand() % int(abs(lowerLeft.x) - distFromEdge + (upperRight.x - distFromEdge) + 0.5f)) - int(abs(lowerLeft.x) - distFromEdge + 0.5f);
-		playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - distFromEdge + (upperRight.y - distFromEdge) + 0.5f)) - int(abs(lowerLeft.y) - distFromEdge + 0.5f);
-	}
-
-	
-	XMFLOAT3 playerPosf = { playerPosX, 1.0f, playerPosZ };
-	
-	//XMFLOAT3 playerPosf = { 29.69, 1.0f, 10.21 };
-
-
-	float playerPosY;
-	pAssociatedTerrain->GetHeightAtPosition(playerPosf, playerPosY);
-
-	XMVECTOR finalPosition = { playerPosX, playerPosY, playerPosZ, 0.0f };
-
-	mPlayerCollisionBox.init(XMFLOAT3(playerPosX, playerPosY, playerPosZ), XMLoadFloat3(&mCam.GetRightVector()), 10, 10);
-	mCam.SetPosition(XMFLOAT3(playerPosX, playerPosY + 2, playerPosZ));
+	mTerrain = terrain;
 
 	//not jumping atm
 	mIsAirborne = false;
 	mJumpVelocity = 50.0f;
 
+	mTerrain = terrain;
+
+	if (position)
+	{
+		mPlayerCollisionBox.init(*position, XMLoadFloat3(&mCam.GetRightVector()), 10, 10);
+		mCam.SetPosition(XMFLOAT3(position->x, position->y + 2, position->z));
+	}
+	else //get a random position in the world
+	{
+
+		XMFLOAT2 lowerLeft, upperRight;
+		mTerrain->GetBoundingRect(lowerLeft, upperRight);
+
+		float playerPosX;
+		float playerPosZ;
+
+		srand((UINT)time(NULL));
+
+		if (lowerLeft.x > 0 || upperRight.x > 0)
+		{
+			playerPosX = (float)(rand() % int(abs(lowerLeft.x) - 1 + abs(upperRight.x) - 1 + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
+			playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - 1 + abs(upperRight.y) - 1 + 0.5f)) - int(abs(lowerLeft.y) - 1 + 0.5f);
+		}
+		else if (lowerLeft.x < 0 && upperRight.x < 0)
+		{
+			playerPosX = (float)(rand() % int(abs(lowerLeft.x) - 1 + (upperRight.x - 1) + 0.5f)) - int(abs(lowerLeft.x) - 1 + 0.5f);
+			playerPosZ = (float)(rand() % int(abs(lowerLeft.y) - 1 + (upperRight.y - 1) + 0.5f)) - int(abs(lowerLeft.y) - 1 + 0.5f);
+		}
+
+
+		XMFLOAT3 playerPosf = { playerPosX, 0.0f, playerPosZ };
+
+		float playerPosY;
+
+
+		XMFLOAT3 finalPosition;
+		finalPosition.x = playerPosX;
+		finalPosition.y = playerPosZ;
+		finalPosition.z = 0.0f;
+
+		mTerrain->GetHeightAtPosition(finalPosition, playerPosY);
+
+
+		mPlayerCollisionBox.init(XMFLOAT3(playerPosX, playerPosY, playerPosZ), XMLoadFloat3(&mCam.GetRightVector()), 10, 10);
+		mCam.SetPosition(XMFLOAT3(playerPosX, playerPosY + 2, playerPosZ));
+	}
+
 
 }
+
+
 
 CharacterController::~CharacterController()
 {
@@ -77,7 +91,7 @@ void CharacterController::Move(XMVECTOR direction)
 	XMStoreFloat3(&boxPosAfterF, boxPosAfterV);
 
 	float playerPosY;
-	pAssociatedTerrain->GetHeightAtPosition(boxPosAfterF, playerPosY);
+	mTerrain->GetHeightAtPosition(boxPosAfterF, playerPosY);
 
 	if (playerPosY < 0)
 		int x = 0;
@@ -133,6 +147,12 @@ void CharacterController::Jump()
 	}
 }
 
+void CharacterController::SetTerrain(Terrain * terrain)
+{
+
+	
+}
+
 void CharacterController::SetMoveSpeed(float speed)
 {
 	mMoveSpeed = speed;
@@ -141,6 +161,11 @@ void CharacterController::SetMoveSpeed(float speed)
 void CharacterController::SetTurnSpeed(float anglesPerSecond)
 {
 	mTurnSpeed = anglesPerSecond;
+}
+
+XMVECTOR CharacterController::mGetRandomPositionOnTerrain()
+{
+	return XMVECTOR();
 }
 
 void CharacterController::Update(float dt)
@@ -231,7 +256,7 @@ void CharacterController::Update(float dt)
 		XMVECTOR currentPosition = mPlayerCollisionBox.GetCenter();
 		XMFLOAT3 currentPositionF;
 		XMStoreFloat3(&currentPositionF, currentPosition);
-		pAssociatedTerrain->GetHeightAtPosition(currentPositionF, currentTerrainHeight);
+		mTerrain->GetHeightAtPosition(currentPositionF, currentTerrainHeight);
 
 		if (currentTerrainHeight >= posAfterJumpF.y)
 		{

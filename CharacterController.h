@@ -10,7 +10,7 @@ using namespace DirectX;
 __declspec(align(16)) class CharacterController
 {
 public:
-	CharacterController(ID3D11DeviceContext* context, Terrain* terrain, PhysicsEngine* physicsEngine);
+	CharacterController(ID3D11DeviceContext* context, Terrain* terrain, PhysicsEngine* physicsEngine, XMFLOAT3* position = nullptr);
 	~CharacterController();
 
 	Camera& GetCamera();
@@ -19,6 +19,8 @@ public:
 
 	void Move(XMVECTOR direction);
 	void Jump();
+
+	void SetTerrain(Terrain* terrain);
 
 	XMFLOAT3 GetPosition()
 	{
@@ -37,19 +39,22 @@ public:
 		_mm_free(p);
 	}
 
-
+	
 
 	void SetMoveSpeed(float speed);
 	void SetTurnSpeed(float anglesPerSecond);
 
 protected:
 
+	Terrain* mTerrain;
 	PhysicsEngine* mPhysicsEngine;
-	ID3D11DeviceContext* mDeviceContext;
-	CollisionBox mPlayerCollisionBox;
-	Camera mCam;
 
-	Terrain* pAssociatedTerrain;
+	Camera mCam;
+	CollisionBox mPlayerCollisionBox;
+
+
+	ID3D11DeviceContext* mDeviceContext;
+
 	float mMoveSpeed;
 	float mTurnSpeed;
 
@@ -58,4 +63,8 @@ protected:
 	float mJumpVelocity; 
 	float mJumpTime;
 	XMVECTOR mJumpStartPos;
+
+protected:
+
+	XMVECTOR mGetRandomPositionOnTerrain();
 };

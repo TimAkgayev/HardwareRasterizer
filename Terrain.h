@@ -94,7 +94,7 @@ private:
 
 */
 
-class DebugBox : public Object
+class DebugBox : public WorldObject
 {
 public:
 	DebugBox();
@@ -112,7 +112,7 @@ private:
 	std::vector<XMFLOAT3> mScaleList;
 };
 
-class Terrain : public Object
+class Terrain : public WorldObject
 {
 public:
 	Terrain(ID3D11Device* device, PhysicsEngine* physicsEngine);
@@ -121,10 +121,10 @@ public:
 	virtual void Draw() override;
 
 	void CreateFromHeightMap(ID3D11Device* device, std::wstring pathToHeightmap, float floorScale = 1.0f, float heightScale = 1.0f);
-	void LoadFromFile(std::string filename);
 	void GetHeightAtPosition(XMFLOAT3& playerPos, float& outHeight);
 	void GetBoundingRect(XMFLOAT2& outLowerLeft, XMFLOAT2& outUpperRight) const;
 
+	void LoadFromMemory(tinyobj::shape_t& shape, tinyobj::attrib_t& attrib, std::vector<tinyobj::material_t>& materials, std::string filename);
 	void SetTexture(std::wstring texturePath);
 
 private:
@@ -147,7 +147,7 @@ private:
 	std::vector<DWORD>      mIndexList;
 	std::vector<_terrain_triangle> mTriangleList;
 
-	void _CreateTerrainVertexBuffersAndGenerateBVHTree(tinyobj::shape_t& shape , tinyobj::attrib_t& attrib);
+	void _CreateTerrainVertexBuffersAndGenerateBVHTree(tinyobj::shape_t& shape , tinyobj::attrib_t& attrib, std::vector<tinyobj::material_t>& materials, std::string filename);
 	void _CreateBoundaryCollisionBoxes();
 	void _CreateCollisionBoxes(std::vector<tinyobj::shape_t>& shapes, tinyobj::attrib_t& attrib, std::vector<UINT>& collisionBoxIndexList);
 };

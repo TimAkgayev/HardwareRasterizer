@@ -26,6 +26,22 @@ cbuffer WorldMatrices : register (b1)
 	matrix World;
 }
 
+cbuffer DirectionalLight : register (b2)
+{
+	float3   LightDirection;
+	float    _padding1;
+	float4   LightColor;
+	float4x4 LightWorldMatrix;
+	float4x4 LightViewMatrix;
+	float4x4 LightProjectionMatrix;
+	float3   LightPosition;
+	float    _padding2;
+};
+
+cbuffer Material : register (b3)
+{
+	float Ka, Kd, Ks, A;
+};
 
 cbuffer LightingVariables : register (b4)
 {
@@ -39,21 +55,8 @@ cbuffer CameraPosition : register (b5)
 };
 
 
-cbuffer DirectionalLight : register (b2)
-{
-	float3   LightDirection;
-	float    _directional_light_padding;
-	float4   LightColor;
-	float4x4 LightWorldMatrix;
-	float4x4 LightViewMatrix;
-	float4x4 LightProjectionMatrix;
-	float4   LightPosition;
-};
 
-cbuffer Material : register (b3)
-{
-	float Ka, Kd, Ks, A;
-};
+
 
 struct DirectionalLightPSInput
 {
@@ -92,7 +95,7 @@ DirectionalLightPSInput VS_DirectionalLight(float4 Pos : POSITION, float3 Normal
 	float4 lightSpacePos = mul(modelPos, LightViewMatrix);
 	lightSpacePos = mul(lightSpacePos, LightProjectionMatrix);
 	output.LightSpacePos = lightSpacePos;
-
+		
 	//find the lightray 
 	output.LightRay = LightPosition.xyz - modelPos.xyz;
 
@@ -163,10 +166,8 @@ float4 PS_ShadowSurfaceDirectionalLight(DirectionalLightPSInput input) : SV_Targ
 
 }
 
-
 float4 PS_DirectionalLight(DirectionalLightPSInput input) : SV_Target
 {
-
 	return AmbientLight*2* txDiffuse.Sample(triLinearSampler, input.Uv) + calcBlinnPhongLighting(Ka, Kd, Ks, A, LightColor, input.Normal, LightDirection, input.HalfAngle) * txDiffuse.Sample(triLinearSampler, input.Uv);
 }
 

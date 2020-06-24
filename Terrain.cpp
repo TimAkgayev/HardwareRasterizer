@@ -7,7 +7,7 @@
 #include <limits>
 #include <set>
 #include <DirectXCollision.h>
-
+#include "Utility.h"
 
 
 
@@ -98,12 +98,12 @@ void Terrain::Draw()
 
 	//mDeviceContext->RSSetState(mRasterizerStateWireframe);
 
+	mDeviceContext->VSSetConstantBuffers(1, 1, &ConstantBuffers::WorldMatrixBuffer);
+	mDeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffers::ViewProjBuffer);
+
 
 	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
 
-	//Shaders::SimpleColorShader::Render(mDeviceContext, &mDbgBox);
-//	mObjectSet.Draw();
-	
 }
 
 
@@ -715,65 +715,7 @@ std::vector<_heap_node> GenerateBVHTree(const std::vector<_bounding_box_tri>& te
 
 }
 
-void Terrain::LoadFromFile(std::string filename)
-{
-
-	std::string inputfile = filename;
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-
-	std::string warn;
-	std::string err;
-
-
-	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, inputfile.c_str());
-
-
-	if (shapes.size() < 1)
-		return;
-
-	//find if there are any terrain objects in the file
-	int terrainShapeIndex = -1;
-	UINT currentIndex = 0;
-	for (tinyobj::shape_t& s : shapes)
-	{
-		std::size_t foundPos = s.name.find("terrain");
-		if (foundPos != std::string::npos)
-		{
-			terrainShapeIndex = currentIndex;
-			break; //just quit at first object found
-		}
-
-		currentIndex++;
-	}
-
-	//if terrrain is found
-	if (terrainShapeIndex >= 0)
-	{
-		_CreateTerrainVertexBuffersAndGenerateBVHTree(shapes[terrainShapeIndex], attrib);
-
-		//find if there are any terrain_collision boxes in the file
-		std::vector<UINT> collisionShapeIndices;
-		UINT currentIndex = 0;
-		for (tinyobj::shape_t& s : shapes)
-		{
-			std::size_t foundPos = s.name.find("collision_terr");
-			if (foundPos != std::string::npos)
-				collisionShapeIndices.push_back(currentIndex);
-				
-			currentIndex++;
-		}
-
-
-		_CreateCollisionBoxes(shapes, attrib, collisionShapeIndices);
-
-
-	}
-}
-
-
-void Terrain::_CreateTerrainVertexBuffersAndGenerateBVHTree(tinyobj::shape_t& shape, tinyobj::attrib_t& attrib)
+void Terrain::_CreateTerrainVertexBuffersAndGenerateBVHTree(tinyobj::shape_t& shape, tinyobj::attrib_t& attrib, std::vector<tinyobj::material_t>& materials, std::string filename)
 {
 
 	std::map<tinyobj::index_t, int, index_comparator> uniqueVertexMap;
@@ -854,6 +796,14 @@ void Terrain::_CreateTerrainVertexBuffersAndGenerateBVHTree(tinyobj::shape_t& sh
 		if (v.pos.z > largest_z)
 			largest_z = v.pos.z;
 	}
+
+	//load the texture
+	std::string textureName = materials[shape.mesh.material_ids[0]].diffuse_texname;
+	std::string base_dir = GetBaseDir(filename);
+	std::string texturePath = base_dir + "/" + textureName;
+	std::wstring texturePathW = StringToWString(texturePath);
+	CreateWICTextureFromFile(mD3DDevice, texturePathW.c_str(), NULL, &mTextureResourceView);
+
 
 	mBoundingRect.lowerLeft = XMFLOAT2(smallest_x, smallest_z);
 	mBoundingRect.upperRight = XMFLOAT2(largest_x, largest_z);
@@ -1291,6 +1241,203 @@ void Terrain::_CreateCollisionBoxes(std::vector<tinyobj::shape_t>& shapes, tinyo
 }
 
 
+
+void Terrain::LoadFromMemory(tinyobj::shape_t & shape, tinyobj::attrib_t & attrib, std::vector<tinyobj::material_t>& materials, std::string filename)
+{
+	std::map<tinyobj::index_t, int, index_comparator> uniqueVertexMap;
+
+	//go through each index and find unique entries
+	for (tinyobj::index_t i : shape.mesh.indices)
+		uniqueVertexMap.insert(std::pair<tinyobj::index_t, int>(i, uniqueVertexMap.size()));
+
+
+	//allocate space for the vertices
+	mVertices = new Vertex::PosNormTex[uniqueVertexMap.size()];
+	mNumVertices = uniqueVertexMap.size();
+
+	for (auto& keyval : uniqueVertexMap)
+	{
+		tinyobj::real_t vx = attrib.vertices[3 * keyval.first.vertex_index + 0];
+		tinyobj::real_t vy = attrib.vertices[3 * keyval.first.vertex_index + 1];
+		tinyobj::real_t vz = attrib.vertices[3 * keyval.first.vertex_index + 2];
+
+		tinyobj::real_t nx = attrib.normals[3 * keyval.first.normal_index + 0];
+		tinyobj::real_t ny = attrib.normals[3 * keyval.first.normal_index + 1];
+		tinyobj::real_t nz = attrib.normals[3 * keyval.first.normal_index + 2];
+
+		tinyobj::real_t tx = attrib.texcoords[2 * keyval.first.texcoord_index + 0];
+		tinyobj::real_t ty = attrib.texcoords[2 * keyval.first.texcoord_index + 1];
+
+		// Optional: vertex colors
+		// tinyobj::real_t red = attrib.colors[3*idx.vertex_index+0];
+		// tinyobj::real_t green = attrib.colors[3*idx.vertex_index+1];
+		// tinyobj::real_t blue = attrib.colors[3*idx.vertex_index+2];
+
+		//
+		// per-face material
+		//shapes[s].mesh.material_ids[f];
+
+		Vertex::PosNormTex vert;
+
+		vert.pos.x = vx;
+		vert.pos.y = vy;
+		vert.pos.z = vz;
+
+		vert.norm.x = nx;
+		vert.norm.y = ny;
+		vert.norm.z = nz;
+
+		vert.uv.x = tx;
+		vert.uv.y = ty;
+
+		mVertices[keyval.second] = vert;
+	}
+
+	//now re-index the old index list
+	for (tinyobj::index_t i : shape.mesh.indices)
+		mIndexList.push_back(uniqueVertexMap[i]);
+
+
+	//find boundaries
+	float smallest_x = 100000000.0f;
+	float smallest_y = 100000000.0f;
+	float smallest_z = 100000000.0f;
+	float largest_x = -100000000.0f;
+	float largest_y = -100000000.0f;
+	float largest_z = -100000000.0f;
+
+	for (int i = 0; i < mNumVertices; i++)
+	{
+		Vertex::PosNormTex v = mVertices[i];
+		if (v.pos.x < smallest_x)
+			smallest_x = v.pos.x;
+		if (v.pos.x > largest_x)
+			largest_x = v.pos.x;
+		if (v.pos.y < smallest_y)
+			smallest_y = v.pos.y;
+		if (v.pos.y > largest_y)
+			largest_y = v.pos.y;
+		if (v.pos.z < smallest_z)
+			smallest_z = v.pos.z;
+		if (v.pos.z > largest_z)
+			largest_z = v.pos.z;
+	}
+
+	//load the texture
+	std::string textureName = materials[shape.mesh.material_ids[0]].diffuse_texname;
+	std::string base_dir = GetBaseDir(filename);
+	std::string texturePath = base_dir + "/" + textureName;
+	std::wstring texturePathW = StringToWString(texturePath);
+	CreateWICTextureFromFile(mD3DDevice, texturePathW.c_str(), NULL, &mTextureResourceView);
+
+
+	mBoundingRect.lowerLeft = XMFLOAT2(smallest_x, smallest_z);
+	mBoundingRect.upperRight = XMFLOAT2(largest_x, largest_z);
+
+/*
+	//adjust the y so it's on zero
+	if (smallest_y != 0)
+	{
+
+		float neg_y = -smallest_y;
+		for (int i = 0; i < mNumVertices; i++)
+			mVertices[i].pos.y += neg_y;
+
+	}
+
+	*/
+
+
+	//create the index buffer
+	D3D11_BUFFER_DESC bufferDesc;
+
+	bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	bufferDesc.ByteWidth = sizeof(DWORD) * mIndexList.size();
+	bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
+
+
+	D3D11_SUBRESOURCE_DATA InitData;
+	InitData.pSysMem = &mIndexList[0];
+	mD3DDevice->CreateBuffer(&bufferDesc, &InitData, &mIB);
+
+	mNumIndices = mIndexList.size();
+
+	//create the vertex buffer
+	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.ByteWidth = sizeof(Vertex::PosNormTex) * mNumVertices; //total size of buffer in bytes
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
+
+	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
+	InitData.pSysMem = mVertices;
+
+	mD3DDevice->CreateBuffer(&bufferDesc, &InitData, &mVB);
+
+
+
+	//generate a BVH
+
+	//find the longest side of bounding box
+	float x_length = largest_x - smallest_x;
+	float y_length = largest_y - smallest_y;
+	float z_length = largest_z - smallest_z;
+
+	//find which side is the longest
+	char side;
+
+	if (x_length > y_length)
+	{
+		if (x_length > z_length) // x is the largest
+			side = 'x';
+		else //z is the largest
+			side = 'z';
+
+	}
+	else
+	{
+		if (y_length > z_length) //y is the largest
+			side = 'y';
+		else //z is the larges
+			side = 'z';
+
+	}
+
+
+
+	std::vector<_bounding_box_tri> triBoundingBoxes;
+
+
+	for (UINT triangle = 0; triangle < mIndexList.size(); triangle += 3)
+	{
+		Vertex::PosNormTex v[3];
+
+		v[0] = mVertices[mIndexList[triangle + 0]];
+		v[1] = mVertices[mIndexList[triangle + 1]];
+		v[2] = mVertices[mIndexList[triangle + 2]];
+
+
+		_terrain_triangle t;
+		t.vertices[0] = v[0];
+		t.vertices[1] = v[1];
+		t.vertices[2] = v[2];
+
+		mTriangleList.push_back(t);
+
+
+		_bounding_box_tri bb;
+		FindBoundingBox(v, 3, bb);
+		bb.tri_index = mTriangleList.size() - 1;
+
+		triBoundingBoxes.push_back(bb);
+
+	}
+
+	mBVHTree = GenerateBVHTree(triBoundingBoxes, 10);
+}
 
 void Terrain::SetTexture(std::wstring texturePath)
 {

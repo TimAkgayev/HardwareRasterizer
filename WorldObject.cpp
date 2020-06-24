@@ -1,4 +1,4 @@
-#include "Object.h"
+#include "WorldObject.h"
 #include <WICTextureLoader.h>
 #include "ConstantBuffers.h"
 #include "tinyobj\tinyobjloader\tiny_obj_loader.h"
@@ -13,7 +13,7 @@ public:
 	}
 };
 
-Object::Object()
+WorldObject::WorldObject()
 {
 
 	mNoDoubleBlendDSS = nullptr;
@@ -28,7 +28,7 @@ Object::Object()
 
 }
 
-void Object::Initialize(ID3D11Device * device, DirectX::XMFLOAT3 position, const Vertex::PosNormTex * vertexList, UINT numVertices, std::vector<UINT>& indexList, std::wstring texturePath, float scale)
+void WorldObject::Initialize(ID3D11Device * device, DirectX::XMFLOAT3 position, const Vertex::PosNormTex * vertexList, UINT numVertices, std::vector<UINT>& indexList, std::wstring texturePath, float scale)
 {
 	mScale = scale;
 	mPosition = position;
@@ -87,7 +87,7 @@ void Object::Initialize(ID3D11Device * device, DirectX::XMFLOAT3 position, const
 
 }
 
-void Object::Draw()
+void WorldObject::Draw()
 {
 	UINT stride = sizeof(Vertex::PosNormTex);
 	UINT offset = 0;
@@ -107,16 +107,16 @@ void Object::Draw()
 	mDeviceContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
 	mDeviceContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
 
-	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
+//	mDeviceContext->DrawIndexed(mNumIndices, 0, 0);
 
 }
 
-UINT Object::GetNumberOfIndices()
+UINT WorldObject::GetNumberOfIndices()
 {
 	return mNumIndices;
 }
 
-Object::~Object()
+WorldObject::~WorldObject()
 {
 
 	ReleaseCOM(mVB);

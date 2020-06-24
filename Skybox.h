@@ -1,19 +1,19 @@
 #pragma once
 #include "common_includes.h"
 #include <vector>
-#include "Object.h"
+#include "WorldObject.h"
 
 
 using namespace DirectX;
 
-class Skybox : public Object
+class Skybox : public WorldObject
 {
 public:
 	Skybox();
 	~Skybox();
 
 	void init(ID3D11Device* device, float radius);
-	void Draw();
+	virtual void Draw() override;
 
 
 private:
@@ -30,6 +30,5 @@ private:
 
 	void mSubdivide(std::vector<XMVECTOR>& vertices, std::vector<DWORD>& indices);
 	void mBuildGeoSphere(UINT numSubdivisions, float radius, std::vector<XMVECTOR>& vertices, std::vector<DWORD>& indices);
-
 
 };

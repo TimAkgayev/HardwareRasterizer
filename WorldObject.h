@@ -1,6 +1,5 @@
 #pragma once
 #include "common_includes.h"
-#include "Vertex.h"
 
 class IDrawable
 {
@@ -8,15 +7,23 @@ public:
 	virtual void Draw() = 0;
 };
 
-class Object : public IDrawable
+class ISkyboxMesh 
 {
 public:
-	Object();
+	virtual void Draw() = 0;
+};
+
+
+
+class WorldObject : public IDrawable
+{
+public:
+	WorldObject();
 	virtual void Initialize(ID3D11Device* device, DirectX::XMFLOAT3 position, const Vertex::PosNormTex* vertexList, UINT numVerteices, std::vector<UINT>& indexList, std::wstring texturePath, float scale = 1.0f);
 	virtual void Draw() override;
 	virtual UINT GetNumberOfIndices();
 
-	virtual ~Object();
+	virtual ~WorldObject();
 
 protected:
 
